@@ -1,0 +1,140 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+
+}
+
+model User {
+  id                String   @id @default(cuid())
+  email             String   @unique
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  // User stats
+  disciplinePoints  Int      @default(0)
+  streakDays        Int      @default(0)
+  dailyBudget       Float    @default(50000)
+  
+  // WhatsApp settings
+  phoneNumber       String?
+  notificationsEnabled Boolean @default(false)
+  classReminders    Boolean  @default(true)
+  dailySummary      Boolean  @default(false)
+  streakAlerts      Boolean  @default(true)
+  budgetWarnings    Boolean  @default(true)
+  
+  // Relations
+  expenses          Expense[]
+  events            Event[]
+  todos             Todo[]
+  dailyNotes        DailyNote[]
+  accounts          Account[]
+  
+  @@map("users")
+}
+
+model Account {
+  id        String   @id @default(cuid())
+  name      String   // "DANA", "SeaBank", "BNI", "Cash"
+  type      String   // "BANK", "WALLET", "CASH"
+  balance   Float    @default(0)
+  color     String?  // Hex color code
+  icon      String?  // Icon identifier
+  isDefault Boolean  @default(false)
+  
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  expenses  Expense[]
+  
+  @@index([userId])
+  @@map("accounts")
+}
+
+model Expense {
+  id        String   @id @default(cuid())
+  amount    Float
+  description String   // New field: name/description of expense
+  category  String
+  date      DateTime @default(now())
+  createdAt DateTime @default(now())
+  
+  // Relations
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  accountId String?  // Optional for backward compatibility, but we should aim to link them
+  account   Account? @relation(fields: [accountId], references: [id])
+  
+  @@index([userId, date])
+  @@index([accountId])
+  @@map("expenses")
+}
+
+model Event {
+  id              String   @id @default(cuid())
+  title           String
+  type            String   // 'class' | 'assignment' | 'meeting' | 'personal' | 'exam' | 'study'
+  startTime       String   // "08:00"
+  endTime         String?  // "10:00" (optional)
+  prepTimeMinutes Int      @default(15)
+  
+  // Scheduling logic
+  day             String?  // "Monday" (for recurring)
+  date            DateTime? // Specific date (for one-off)
+  isRecurring     Boolean  @default(false)
+  recurringPattern String? // 'weekly', 'biweekly', 'monthly'
+  
+  description     String?
+  location        String?
+  
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+  
+  userId          String
+  user            User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, day])
+  @@index([userId, date])
+  @@map("events")
+}
+
+model Todo {
+  id          String   @id @default(cuid())
+  text        String
+  completed   Boolean  @default(false)
+  dueDate     DateTime?
+  createdAt   DateTime @default(now())
+  completedAt DateTime?
+  
+  userId      String
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId, completed])
+  @@map("todos")
+}
+
+model DailyNote {
+  id        String   @id @default(cuid())
+  date      DateTime // Date of the note
+  content   String   @db.Text
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+  
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@unique([userId, date])
+  @@index([userId, date])
+  @@map("daily_notes")
+}
