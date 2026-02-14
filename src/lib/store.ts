@@ -102,11 +102,12 @@ export const initialUser: UserState = {
 let currentState = { ...initialUser };
 
 export const getUserState = () => currentState;
-export const addExpense = (amount: number, category: string) => {
+export const addExpense = (amount: number, category: string, description: string) => {
     currentState.expenses.push({
         id: Math.random().toString(36).substr(2, 9),
         amount,
         category,
+        description,
         date: new Date().toISOString()
     });
     return currentState;

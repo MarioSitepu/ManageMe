@@ -34,7 +34,7 @@ export function CategoryPieChart({ data }: CategoryPieChartProps) {
                         cx="50%"
                         cy="50%"
                         labelLine={false}
-                        label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
+                        label={({ name, percent }) => `${name} (${percent !== undefined ? (percent * 100).toFixed(0) : 0}%)`}
                         outerRadius={80}
                         fill="#8884d8"
                         dataKey="value"
@@ -50,7 +50,7 @@ export function CategoryPieChart({ data }: CategoryPieChartProps) {
                             borderRadius: '8px',
                             color: 'white'
                         }}
-                        formatter={(value: number) => [formatRupiah(value), 'Amount']}
+                        formatter={(value: number | undefined) => value !== undefined ? [formatRupiah(value), 'Amount'] : ['', 'Amount']}
                     />
                     <Legend
                         wrapperStyle={{ color: 'rgba(255,255,255,0.7)', fontSize: '12px' }}

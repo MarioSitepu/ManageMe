@@ -29,14 +29,14 @@ export function ExpenseLineChart({ data }: ExpenseLineChartProps) {
                             borderRadius: '8px',
                             color: 'white'
                         }}
-                        formatter={(value: number) => [
+                        formatter={(value: number | undefined) => value !== undefined ? [
                             new Intl.NumberFormat('id-ID', {
                                 style: 'currency',
                                 currency: 'IDR',
                                 maximumFractionDigits: 0
                             }).format(value),
                             'Amount'
-                        ]}
+                        ] : ['', 'Amount']}
                     />
                     <Legend wrapperStyle={{ color: 'rgba(255,255,255,0.7)' }} />
                     <Line

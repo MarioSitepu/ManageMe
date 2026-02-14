@@ -27,11 +27,11 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { amount, category, userId = 'default-user', accountId } = body; // TODO: Get userId from auth
+        const { amount, category, description, userId = 'default-user', accountId } = body; // TODO: Get userId from auth
 
-        if (!amount || !category) {
+        if (!amount || !category || !description) {
             return NextResponse.json(
-                { error: 'Amount and category are required' },
+                { error: 'Amount, category and description are required' },
                 { status: 400 }
             );
         }
@@ -43,6 +43,7 @@ export async function POST(request: Request) {
                 data: {
                     amount: parseFloat(amount),
                     category,
+                    description,
                     userId,
                     accountId,
                 },

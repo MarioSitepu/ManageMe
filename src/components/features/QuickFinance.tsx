@@ -8,12 +8,14 @@ export const QuickFinance: React.FC = () => {
     const { state, addExpense } = useGlobal();
     const [amount, setAmount] = useState('');
     const [category, setCategory] = useState('');
+    const [description, setDescription] = useState('');
 
     const handleAdd = () => {
-        if (!amount || !category) return;
-        addExpense(parseInt(amount), category);
+        if (!amount || !category || !description) return;
+        addExpense(parseInt(amount), category, description);
         setAmount('');
         setCategory('');
+        setDescription('');
     };
 
     // Calculate daily total (simple filter for today)
@@ -44,6 +46,22 @@ export const QuickFinance: React.FC = () => {
                         outline: 'none'
                     }}
                 />
+                <input
+                    type="text"
+                    placeholder="Description (e.g. Nasi Goreng)"
+                    value={description}
+                    onChange={(e) => setDescription(e.target.value)}
+                    style={{
+                        width: '100%',
+                        padding: '12px',
+                        borderRadius: '8px',
+                        border: '1px solid var(--glass-border)',
+                        background: 'rgba(0,0,0,0.2)',
+                        color: 'white',
+                        fontSize: '1rem',
+                        outline: 'none'
+                    }}
+                />
                 <div style={{ display: 'flex', gap: '10px' }}>
                     {['Food', 'Transport', 'Shop'].map(cat => (
                         <Button
@@ -60,7 +78,7 @@ export const QuickFinance: React.FC = () => {
                         </Button>
                     ))}
                 </div>
-                <Button variant="primary" onClick={handleAdd} disabled={!amount || !category}>
+                <Button variant="primary" onClick={handleAdd} disabled={!amount || !category || !description}>
                     Add Expense
                 </Button>
             </div>
