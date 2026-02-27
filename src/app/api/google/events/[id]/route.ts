@@ -5,10 +5,10 @@ import { getAuthClientForUser } from '@/lib/googleCalendar';
 // Update a Google Calendar event by its gcal event ID
 export async function PUT(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const googleEventId = params.id;
+        const { id: googleEventId } = await params;
         const body = await request.json();
         const { title, startTime, endTime, date, day, isRecurring, description, location, type } = body;
 
@@ -82,10 +82,10 @@ export async function PUT(
 // Delete a Google Calendar event
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
-        const googleEventId = params.id;
+        const { id: googleEventId } = await params;
         const auth = await getAuthClientForUser('default-user');
         const calendar = google.calendar({ version: 'v3', auth });
 

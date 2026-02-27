@@ -4,9 +4,10 @@ import { prisma, handleDatabaseError } from '@/lib/db';
 // UPDATE event
 export async function PUT(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         const body = await request.json();
         const {
             title,
@@ -23,7 +24,7 @@ export async function PUT(
         } = body;
 
         const event = await prisma.event.update({
-            where: { id: params.id },
+            where: { id },
             data: {
                 ...(title && { title }),
                 ...(type && { type }),
@@ -49,11 +50,12 @@ export async function PUT(
 // DELETE event
 export async function DELETE(
     request: Request,
-    { params }: { params: { id: string } }
+    { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const { id } = await params;
         await prisma.event.delete({
-            where: { id: params.id },
+            where: { id },
         });
 
         return NextResponse.json({ success: true });
