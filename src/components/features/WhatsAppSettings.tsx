@@ -15,7 +15,8 @@ export const WhatsAppSettings: React.FC = () => {
         eventReminderMinutes: [15, 30],
         dailySummary: false,
         streakAlerts: true,
-        budgetWarnings: true
+        budgetWarnings: true,
+        habitMorningTime: '07:00'
     };
 
     const [settings, setSettings] = useState(state.notificationSettings || defaultSettings);
@@ -174,6 +175,27 @@ export const WhatsAppSettings: React.FC = () => {
                                 </p>
                             </div>
                         )}
+
+                        {/* Morning Habit Reminder Time */}
+                        <div style={{ marginTop: '10px', paddingLeft: '10px', display: 'flex', alignItems: 'center', gap: '10px' }}>
+                            <label style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>
+                                Morning Habit Reminder:
+                            </label>
+                            <input
+                                type="time"
+                                value={settings.habitMorningTime || '07:00'}
+                                onChange={(e) => setSettings({ ...settings, habitMorningTime: e.target.value })}
+                                style={{
+                                    padding: '6px 12px',
+                                    borderRadius: '8px',
+                                    border: '1px solid var(--glass-border)',
+                                    background: 'rgba(0,0,0,0.2)',
+                                    color: 'white',
+                                    fontSize: '0.9rem',
+                                    outline: 'none'
+                                }}
+                            />
+                        </div>
                     </div>
                 )}
 

@@ -51,6 +51,14 @@ export interface TodoItem {
     dueDate?: string;  // ISO date string (YYYY-MM-DD)
 }
 
+export interface Habit {
+    id: string;
+    text: string;
+    completed: boolean;
+    reminderTime?: string;
+    lastCompletedDate?: string;
+}
+
 
 export interface UserState {
     disciplinePoints: number;
@@ -61,6 +69,7 @@ export interface UserState {
     events: CalendarEvent[];
     dailyNotes: DailyNote[];
     todos: TodoItem[];
+    habits: Habit[];
     phoneNumber?: string;
     notificationSettings: {
         enabled: boolean;
@@ -69,6 +78,7 @@ export interface UserState {
         dailySummary: boolean;
         streakAlerts: boolean;
         budgetWarnings: boolean;
+        habitMorningTime: string;
     };
 }
 
@@ -87,6 +97,7 @@ export const initialUser: UserState = {
     ],
     dailyNotes: [],
     todos: [],
+    habits: [],
     phoneNumber: '',
     notificationSettings: {
         enabled: false,
@@ -94,7 +105,8 @@ export const initialUser: UserState = {
         eventReminderMinutes: [15, 30],
         dailySummary: false,
         streakAlerts: true,
-        budgetWarnings: true
+        budgetWarnings: true,
+        habitMorningTime: '07:00'
     }
 };
 

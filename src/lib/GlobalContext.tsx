@@ -1,6 +1,6 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initialUser, UserState, EventType, CalendarEvent } from './store';
+import { initialUser, UserState, EventType, CalendarEvent, Habit } from './store';
 
 interface GlobalContextType {
     state: UserState;
@@ -17,6 +17,14 @@ interface GlobalContextType {
     addTodo: (text: string, dueDate?: string) => void;
     toggleTodo: (id: string) => void;
     deleteTodo: (id: string) => void;
+
+    // Habits
+    addHabit: (text: string, reminderTime?: string) => Promise<void>;
+    updateHabit: (id: string, updates: Partial<Habit>) => Promise<void>;
+    toggleHabit: (id: string) => Promise<void>;
+    deleteHabit: (id: string) => Promise<void>;
+
+    updateDailyBudget: (budget: number) => void;
     loading: boolean;
 }
 
@@ -39,24 +47,24 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
                     setState(prev => ({ ...prev, ...parsedState }));
                 }
 
-                // 2. Fetch from API (Expenses & Events)
-                // This becomes the source of truth for these domains
-                const [expRes, evtRes] = await Promise.all([
+                // 2. Fetch from API (Expenses, Events, Habits)
+                const [expRes, evtRes, habRes] = await Promise.all([
                     fetch('/api/expenses?userId=default-user'),
-                    fetch('/api/events?userId=default-user')
+                    fetch('/api/events?userId=default-user'),
+                    fetch('/api/habits?userId=default-user')
                 ]);
 
-                if (expRes.ok && evtRes.ok) {
+                if (expRes.ok && evtRes.ok && habRes.ok) {
                     const expenses = await expRes.json();
                     const events = await evtRes.json();
+                    const habits = await habRes.json();
 
-                    if (Array.isArray(expenses) && Array.isArray(events)) {
-                        setState(prev => ({
-                            ...prev,
-                            expenses,
-                            events
-                        }));
-                    }
+                    setState(prev => ({
+                        ...prev,
+                        expenses: Array.isArray(expenses) ? expenses : prev.expenses,
+                        events: Array.isArray(events) ? events : prev.events,
+                        habits: Array.isArray(habits) ? habits : prev.habits
+                    }));
                 }
             } catch (error) {
                 console.error("Failed to load data", error);
@@ -234,12 +242,27 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }));
     };
 
-    const updateSettings = (phoneNumber: string, notificationSettings: UserState['notificationSettings']) => {
+    const updateSettings = async (phoneNumber: string, notificationSettings: UserState['notificationSettings']) => {
         setState(prev => ({
             ...prev,
             phoneNumber,
             notificationSettings
         }));
+
+        try {
+            await fetch('/api/settings', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    userId: 'default-user',
+                    phoneNumber,
+                    notificationSettings,
+                    habitMorningTime: notificationSettings.habitMorningTime
+                })
+            });
+        } catch (error) {
+            console.error("Failed to update settings", error);
+        }
     };
 
     const updateDailyNote = (date: string, content: string) => {
@@ -284,6 +307,86 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         }));
     };
 
+    // --- HABITS ---
+    const addHabit = async (text: string, reminderTime?: string) => {
+        const tempId = Math.random().toString(36).substr(2, 9);
+        const newHabit = { id: tempId, text, completed: false, reminderTime };
+
+        setState(prev => ({ ...prev, habits: [...prev.habits, newHabit] }));
+
+        try {
+            const res = await fetch('/api/habits', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ text, reminderTime, userId: 'default-user' })
+            });
+            if (res.ok) {
+                const savedHabit = await res.json();
+                setState(prev => ({
+                    ...prev,
+                    habits: prev.habits.map(h => h.id === tempId ? savedHabit : h)
+                }));
+            }
+        } catch (e) {
+            console.error("Failed to add habit", e);
+        }
+    };
+
+    const updateHabit = async (id: string, updates: Partial<Habit>) => {
+        setState(prev => ({
+            ...prev,
+            habits: prev.habits.map(h => h.id === id ? { ...h, ...updates } : h)
+        }));
+        try {
+            await fetch(`/api/habits/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(updates)
+            });
+        } catch (e) { console.error("Failed to update habit", e); }
+    };
+
+    const toggleHabit = async (id: string) => {
+        const habit = state.habits.find(h => h.id === id);
+        if (!habit) return;
+
+        const newStatus = !habit.completed;
+        setState(prev => ({
+            ...prev,
+            habits: prev.habits.map(h => h.id === id ? { ...h, completed: newStatus } : h)
+        }));
+
+        // Add points on habit completion
+        if (newStatus) {
+            addPoints(5); // 5 points per habit
+        }
+
+        try {
+            await fetch(`/api/habits/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ completed: newStatus })
+            });
+        } catch (e) { console.error("Failed to toggle habit", e); }
+    };
+
+    const deleteHabit = async (id: string) => {
+        setState(prev => ({
+            ...prev,
+            habits: prev.habits.filter(h => h.id !== id)
+        }));
+        try {
+            await fetch(`/api/habits/${id}`, { method: 'DELETE' });
+        } catch (e) { console.error("Failed to delete habit", e); }
+    };
+
+    const updateDailyBudget = (budget: number) => {
+        setState(prev => ({
+            ...prev,
+            dailyBudget: budget
+        }));
+    };
+
     return (
         <GlobalContext.Provider value={{
             state,
@@ -300,6 +403,11 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             addTodo,
             toggleTodo,
             deleteTodo,
+            addHabit,
+            updateHabit,
+            toggleHabit,
+            deleteHabit,
+            updateDailyBudget,
             loading
         }}>
             {children}

@@ -44,17 +44,28 @@ export function MonthlyCalendar({ currentDate, events, onDateClick, onEventClick
 
     const getEventsForDate = (date: Date) => {
         if (!date) return [];
-        const dateStr = date.toLocaleDateString('en-US', { weekday: 'long' });
-        // Filter by specific date matches (future implementation) or recurring day matches
-        // For now, matching by "Day" string as per current store structure
-        return events.filter(e => e.day === dateStr);
+        const weekdayName = date.toLocaleDateString('en-US', { weekday: 'long' }); // e.g. "Monday"
+        const dateISO = `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`; // "YYYY-MM-DD"
+
+        return events.filter(e => {
+            // Match recurring events by weekday name
+            if (e.isRecurring && e.day === weekdayName) return true;
+            // Match specific-date events by date string
+            if (e.date) {
+                const evDate = e.date.substring(0, 10); // take YYYY-MM-DD part
+                return evDate === dateISO;
+            }
+            // Fallback: match by day name for legacy events without isRecurring flag
+            return !e.date && e.day === weekdayName;
+        });
     };
 
+
     return (
-        <div style={{ width: '100%', background: 'rgba(255,255,255,0.02)', borderRadius: '12px', padding: '16px' }}>
-            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '8px' }}>
+        <div style={{ width: '100%', background: 'var(--surface)', border: '1px solid var(--border)', borderRadius: 'var(--radius-lg)', padding: '16px' }}>
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '12px' }}>
                 {weekDays.map(day => (
-                    <div key={day} style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', padding: '8px' }}>
+                    <div key={day} style={{ textAlign: 'center', fontSize: '0.8125rem', fontWeight: 600, color: 'var(--text-muted)', padding: '4px' }}>
                         {day}
                     </div>
                 ))}
@@ -69,44 +80,50 @@ export function MonthlyCalendar({ currentDate, events, onDateClick, onEventClick
                             key={idx}
                             onClick={() => date && onDateClick(date)}
                             style={{
-                                minHeight: '100px',
-                                background: isToday ? 'rgba(139, 92, 246, 0.1)' : 'rgba(255,255,255,0.03)',
-                                border: isToday ? '1px solid var(--accent-primary)' : '1px solid rgba(255,255,255,0.05)',
-                                borderRadius: '8px',
-                                padding: '8px',
+                                minHeight: '90px',
+                                background: isToday ? 'var(--accent-light)' : 'var(--surface-2)',
+                                border: `1px solid ${isToday ? 'var(--accent)' : 'var(--border)'}`,
+                                borderRadius: 'var(--radius-sm)',
+                                padding: '4px 6px',
                                 cursor: date ? 'pointer' : 'default',
-                                position: 'relative'
+                                position: 'relative',
+                                display: 'flex',
+                                flexDirection: 'column',
+                                overflow: 'hidden', // Prevent breaking layout
+                                minWidth: 0 // Prevent flex children from overflowing
                             }}
                         >
                             {date && (
                                 <>
                                     <div style={{
                                         textAlign: 'right',
+                                        fontSize: '0.8125rem',
+                                        color: isToday ? 'var(--accent)' : 'var(--text)',
+                                        fontWeight: isToday ? 700 : 500,
                                         marginBottom: '4px',
-                                        fontSize: '0.9rem',
-                                        color: isToday ? 'var(--accent-primary)' : 'var(--text-primary)',
-                                        fontWeight: isToday ? 'bold' : 'normal'
                                     }}>
                                         {date.getDate()}
                                     </div>
-                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px' }}>
+                                    <div style={{ display: 'flex', flexDirection: 'column', gap: '4px', overflowY: 'auto', flex: 1, minWidth: 0 }}>
                                         {dayEvents.map(event => (
                                             <div
                                                 key={event.id}
-                                                onClick={(e) => {
-                                                    e.stopPropagation();
-                                                    onEventClick(event);
-                                                }}
+                                                onClick={(e) => { e.stopPropagation(); onEventClick(event); }}
                                                 style={{
-                                                    fontSize: '0.7rem',
+                                                    fontSize: '0.65rem',
+                                                    fontWeight: 500,
                                                     padding: '2px 4px',
                                                     borderRadius: '4px',
-                                                    background: `${getEventColor(event.type)}30`,
-                                                    color: 'white', // getEventColor(event.type),
+                                                    background: `${getEventColor(event.type)}25`,
+                                                    color: 'var(--text)',
                                                     borderLeft: `2px solid ${getEventColor(event.type)}`,
                                                     whiteSpace: 'nowrap',
                                                     overflow: 'hidden',
-                                                    textOverflow: 'ellipsis'
+                                                    textOverflow: 'ellipsis',
+                                                    cursor: 'pointer',
+                                                    width: '100%',
+                                                    minWidth: 0,
+                                                    boxSizing: 'border-box'
                                                 }}
                                                 title={event.title}
                                             >

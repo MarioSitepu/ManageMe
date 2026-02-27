@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, handleDatabaseError } from '@/lib/db';
+import { syncEventToGoogle, isGoogleCalendarConnected } from '@/lib/googleCalendar';
 
 // GET all events for a user
 export async function GET(request: Request) {
@@ -81,8 +82,8 @@ export async function POST(request: Request) {
                 startTime,
                 endTime,
                 prepTimeMinutes: prepTimeMinutes || 15,
-                day,  // Optional
-                date: date ? new Date(date) : null, // Optional
+                day,
+                date: date ? new Date(date) : null,
                 description,
                 location,
                 isRecurring: isRecurring || false,
@@ -90,6 +91,11 @@ export async function POST(request: Request) {
                 userId,
             },
         });
+
+        // Auto-sync to Google Calendar (non-blocking — won't slow down response)
+        syncEventToGoogle(event.id, userId).catch(e =>
+            console.log('Google Calendar sync skipped (not connected?):', e.message)
+        );
 
         return NextResponse.json(event, { status: 201 });
     } catch (error) {

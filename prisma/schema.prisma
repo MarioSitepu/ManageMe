@@ -29,11 +29,19 @@ model User {
   dailySummary      Boolean  @default(false)
   streakAlerts      Boolean  @default(true)
   budgetWarnings    Boolean  @default(true)
+  habitMorningTime  String   @default("07:00")
+  
+  // Google Calendar OAuth tokens
+  googleAccessToken  String?
+  googleRefreshToken String?
+  googleTokenExpiry  DateTime?
+  googleCalendarId   String?   // which calendar to sync to (default: primary)
   
   // Relations
   expenses          Expense[]
   events            Event[]
   todos             Todo[]
+  habits            Habit[]
   dailyNotes        DailyNote[]
   accounts          Account[]
   
@@ -97,6 +105,7 @@ model Event {
   
   description     String?
   location        String?
+  googleEventId   String?  // Google Calendar event ID for sync tracking
   
   createdAt       DateTime @default(now())
   updatedAt       DateTime @updatedAt
@@ -137,4 +146,20 @@ model DailyNote {
   @@unique([userId, date])
   @@index([userId, date])
   @@map("daily_notes")
+}
+
+model Habit {
+  id                String   @id @default(cuid())
+  text              String
+  completed         Boolean  @default(false)
+  reminderTime      String?  // e.g. "08:00" specific time reminder
+  lastCompletedDate DateTime? // to track daily reset
+  createdAt         DateTime @default(now())
+  updatedAt         DateTime @updatedAt
+  
+  userId            String
+  user              User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  
+  @@index([userId])
+  @@map("habits")
 }
