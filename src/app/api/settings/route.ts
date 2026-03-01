@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 export async function POST(request: Request) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = session.userId;
         const body = await request.json();
-        const { userId, phoneNumber, notificationSettings, habitMorningTime } = body;
-
-        if (!userId) {
-            return NextResponse.json({ error: 'User ID is required' }, { status: 400 });
-        }
+        const { phoneNumber, notificationSettings, habitMorningTime } = body;
 
         const updatedUser = await prisma.user.update({
             where: { id: userId },

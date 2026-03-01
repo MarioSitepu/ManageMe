@@ -19,6 +19,8 @@ export function getAuthUrl(): string {
         scope: [
             'https://www.googleapis.com/auth/calendar',
             'https://www.googleapis.com/auth/calendar.events',
+            'https://www.googleapis.com/auth/userinfo.email',
+            'https://www.googleapis.com/auth/userinfo.profile',
         ],
     });
 }
@@ -262,8 +264,8 @@ export async function getUpcomingFromGoogle(userId: string, days: number = 7): P
         if (status === 403) {
             return `❌ *Akses ditolak (403)*\n\nKemungkinan penyebab:\n1. Google Calendar API belum diaktifkan\n   → Buka: console.cloud.google.com → APIs & Services → Library → cari "Google Calendar API" → Enable\n\n2. Scope tidak cukup → coba reconnect di /api/google/auth`;
         }
-        if (status === 401) {
-            return `❌ *Token expired/invalid (401)*\n\nCoba reconnect: /api/google/auth`;
+        if (status === 401 || status === 400) {
+            return `❌ *Sesi Google Calendar berakhir atau token tidak valid (${status})*\n\n(Catatan: Jika aplikasi Google OAuth berstatus "Testing", token akan otomatis expired dalam 7 hari).\n\nSilakan reconnect ulang di:\n🌐 ${process.env.NEXTAUTH_URL || 'http://localhost:3000'}/api/google/auth`;
         }
 
         return `❌ Gagal mengambil data Google Calendar.\nError: ${message}\nStatus: ${status || 'unknown'}`;

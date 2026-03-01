@@ -87,44 +87,68 @@ export const WhatsAppSettings: React.FC = () => {
                 </div>
 
                 {/* Enable/Disable */}
-                <div style={{
+                <label style={{
                     display: 'flex',
                     justifyContent: 'space-between',
                     alignItems: 'center',
-                    padding: '12px',
-                    background: 'rgba(255,255,255,0.03)',
-                    borderRadius: '8px'
+                    padding: '16px',
+                    background: settings.enabled ? 'rgba(124, 58, 237, 0.1)' : 'rgba(255,255,255,0.03)',
+                    border: settings.enabled ? '1px solid rgba(124, 58, 237, 0.3)' : '1px solid var(--border)',
+                    borderRadius: '12px',
+                    cursor: 'pointer',
+                    transition: 'all 0.3s ease'
                 }}>
-                    <span style={{ fontWeight: 600 }}>Enable Notifications</span>
-                    <label style={{ cursor: 'pointer' }}>
+                    <span style={{ fontWeight: 600, color: settings.enabled ? 'var(--accent-primary)' : 'var(--text)' }}>
+                        Enable Notifications
+                    </span>
+                    <div style={{ position: 'relative', width: '48px', height: '26px', backgroundColor: settings.enabled ? 'var(--accent)' : 'var(--surface-3)', borderRadius: '13px', transition: 'background-color 0.3s', display: 'flex', alignItems: 'center', padding: '2px' }}>
+                        <div style={{ width: '22px', height: '22px', backgroundColor: 'white', borderRadius: '50%', transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)', transform: settings.enabled ? 'translateX(22px)' : 'translateX(0)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
                         <input
                             type="checkbox"
                             checked={settings.enabled}
                             onChange={(e) => setSettings({ ...settings, enabled: e.target.checked })}
-                            style={{ transform: 'scale(1.5)', cursor: 'pointer' }}
+                            style={{ position: 'absolute', opacity: 0, cursor: 'pointer', width: '100%', height: '100%', margin: 0 }}
                         />
-                    </label>
-                </div>
+                    </div>
+                </label>
 
                 {/* Individual Settings */}
                 {settings.enabled && (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: '10px', paddingLeft: '10px' }}>
-                        {[
-                            { key: 'classReminders', label: '⏰ Event Reminders' },
-                            { key: 'streakAlerts', label: '🎯 Streak Alerts' },
-                            { key: 'budgetWarnings', label: '💰 Budget Warnings' },
-                            { key: 'dailySummary', label: '📊 Daily Summary' },
-                        ].map(({ key, label }) => (
-                            <label key={key} style={{ display: 'flex', alignItems: 'center', gap: '10px', cursor: 'pointer' }}>
-                                <input
-                                    type="checkbox"
-                                    checked={settings[key as keyof typeof settings] as boolean}
-                                    onChange={(e) => setSettings({ ...settings, [key]: e.target.checked })}
-                                    style={{ transform: 'scale(1.2)', cursor: 'pointer' }}
-                                />
-                                <span style={{ fontSize: '0.95rem' }}>{label}</span>
-                            </label>
-                        ))}
+                        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(200px, 1fr))', gap: '10px' }}>
+                            {[
+                                { key: 'classReminders', label: '⏰ Event Reminders' },
+                                { key: 'streakAlerts', label: '🎯 Streak Alerts' },
+                                { key: 'budgetWarnings', label: '💰 Budget Warnings' },
+                                { key: 'dailySummary', label: '📊 Daily Summary' },
+                            ].map(({ key, label }) => {
+                                const isChecked = settings[key as keyof typeof settings] as boolean;
+                                return (
+                                    <label key={key} style={{
+                                        display: 'flex',
+                                        alignItems: 'center',
+                                        justifyContent: 'space-between',
+                                        padding: '14px 16px',
+                                        background: 'var(--surface-2)',
+                                        borderRadius: '10px',
+                                        border: '1px solid var(--border)',
+                                        cursor: 'pointer',
+                                        transition: 'all 0.2s ease'
+                                    }}>
+                                        <span style={{ fontSize: '0.95rem', fontWeight: 500 }}>{label}</span>
+                                        <div style={{ position: 'relative', width: '40px', height: '22px', backgroundColor: isChecked ? 'var(--accent)' : 'var(--surface-3)', borderRadius: '11px', transition: 'background-color 0.3s', display: 'flex', alignItems: 'center', padding: '2px' }}>
+                                            <div style={{ width: '18px', height: '18px', backgroundColor: 'white', borderRadius: '50%', transition: 'transform 0.3s cubic-bezier(0.4, 0, 0.2, 1)', transform: isChecked ? 'translateX(18px)' : 'translateX(0)', boxShadow: '0 2px 4px rgba(0,0,0,0.2)' }} />
+                                            <input
+                                                type="checkbox"
+                                                checked={isChecked}
+                                                onChange={(e) => setSettings({ ...settings, [key]: e.target.checked })}
+                                                style={{ position: 'absolute', opacity: 0, cursor: 'pointer', width: '100%', height: '100%', margin: 0, top: 0, left: 0 }}
+                                            />
+                                        </div>
+                                    </label>
+                                );
+                            })}
+                        </div>
 
                         {/* Reminder Times */}
                         {settings.classReminders && (

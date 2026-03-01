@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, handleDatabaseError } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 // UPDATE expense
 export async function PUT(
@@ -7,9 +8,14 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const { id } = await params;
         const body = await request.json();
         const { amount, category } = body;
+
+        const existing = await prisma.expense.findUnique({ where: { id } });
+        if (!existing || existing.userId !== session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const expense = await prisma.expense.update({
             where: { id },
@@ -32,7 +38,13 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const { id } = await params;
+
+        const existing = await prisma.expense.findUnique({ where: { id } });
+        if (!existing || existing.userId !== session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
         await prisma.expense.delete({
             where: { id },
         });

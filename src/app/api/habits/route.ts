@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 export async function GET(request: Request) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = session.userId;
         const { searchParams } = new URL(request.url);
-        const userId = searchParams.get('userId') || 'default-user';
 
         const habits = await prisma.habit.findMany({
             where: { userId },
@@ -47,8 +50,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = session.userId;
         const body = await request.json();
-        const { text, reminderTime, userId } = body;
+        const { text, reminderTime } = body;
 
         if (!text || !userId) {
             return NextResponse.json({ error: 'Missing required fields' }, { status: 400 });

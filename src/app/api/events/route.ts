@@ -1,12 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma, handleDatabaseError } from '@/lib/db';
 import { syncEventToGoogle, isGoogleCalendarConnected } from '@/lib/googleCalendar';
+import { getSession } from '@/lib/auth';
 
 // GET all events for a user
 export async function GET(request: Request) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = session.userId;
         const { searchParams } = new URL(request.url);
-        const userId = searchParams.get('userId') || 'default-user';
         const day = searchParams.get('day'); // Optional filter by day
         const date = searchParams.get('date'); // Optional filter by date
 
@@ -43,6 +46,9 @@ export async function GET(request: Request) {
 // POST create new event
 export async function POST(request: Request) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = session.userId;
         const body = await request.json();
         const {
             title,
@@ -56,7 +62,6 @@ export async function POST(request: Request) {
             location,
             isRecurring,
             recurringPattern,
-            userId = 'default-user',
         } = body;
 
         // Validation

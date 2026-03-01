@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma, handleDatabaseError } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 // UPDATE event
 export async function PUT(
@@ -7,6 +8,8 @@ export async function PUT(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const { id } = await params;
         const body = await request.json();
         const {
@@ -22,6 +25,9 @@ export async function PUT(
             isRecurring,
             recurringPattern,
         } = body;
+
+        const existing = await prisma.event.findUnique({ where: { id } });
+        if (!existing || existing.userId !== session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
         const event = await prisma.event.update({
             where: { id },
@@ -53,7 +59,13 @@ export async function DELETE(
     { params }: { params: Promise<{ id: string }> }
 ) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const { id } = await params;
+
+        const existing = await prisma.event.findUnique({ where: { id } });
+        if (!existing || existing.userId !== session.userId) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
         await prisma.event.delete({
             where: { id },
         });

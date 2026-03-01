@@ -52,6 +52,10 @@ const navItems = [
 export const Navbar: React.FC = () => {
     const pathname = usePathname();
 
+    if (pathname === '/login' || pathname === '/register') {
+        return null;
+    }
+
     return (
         <nav style={{
             position: 'fixed',

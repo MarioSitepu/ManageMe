@@ -1,10 +1,13 @@
 import { NextResponse } from 'next/server';
 import { prisma, handleDatabaseError } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 export async function GET(request: Request) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = session.userId;
         const { searchParams } = new URL(request.url);
-        const userId = searchParams.get('userId') || 'default-user'; // TODO: Get from auth session
 
         // Include account details
         const expenses = await prisma.expense.findMany({
@@ -26,8 +29,11 @@ export async function GET(request: Request) {
 
 export async function POST(request: Request) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = session.userId;
         const body = await request.json();
-        const { amount, category, description, userId = 'default-user', accountId } = body; // TODO: Get userId from auth
+        const { amount, category, description, accountId } = body;
 
         if (!amount || !category || !description) {
             return NextResponse.json(
