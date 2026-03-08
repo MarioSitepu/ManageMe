@@ -57,13 +57,7 @@
 /* ===================================
    RESET & BASE
    =================================== */
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-  margin: 0;
-  padding: 0;
-}
+/* Handled natively by Tailwind preflight */
 
 html {
   scroll-behavior: smooth;
@@ -633,5 +627,75 @@ input[type="checkbox"] {
 @media (min-width: 768px) {
   .container {
     padding: 2.5rem 1.5rem 5rem;
+  }
+}
+
+/* High-End Login Page Animations */
+@keyframes hero-fade-in {
+  0% {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+
+  100% {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+@keyframes float-slow {
+
+  0%,
+  100% {
+    transform: translateY(0) scale(1);
+  }
+
+  50% {
+    transform: translateY(-30px) scale(1.05);
+  }
+}
+
+@keyframes orbit {
+  0% {
+    transform: rotate(0deg) translateX(50px) rotate(0deg);
+  }
+
+  100% {
+    transform: rotate(360deg) translateX(50px) rotate(-360deg);
+  }
+}
+
+@layer utilities {
+  .animate-hero {
+    animation: hero-fade-in 1s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+  }
+
+  .animate-float-slow {
+    animation: float-slow 15s ease-in-out infinite;
+  }
+
+  .animate-orbit {
+    animation: orbit 25s linear infinite;
+  }
+
+  /* Staggered animation delays */
+  .delay-100 {
+    animation-delay: 100ms;
+  }
+
+  .delay-200 {
+    animation-delay: 200ms;
+  }
+
+  .delay-300 {
+    animation-delay: 300ms;
+  }
+
+  .delay-400 {
+    animation-delay: 400ms;
+  }
+
+  .delay-500 {
+    animation-delay: 500ms;
   }
 }

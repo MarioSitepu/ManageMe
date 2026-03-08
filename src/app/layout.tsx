@@ -3,6 +3,7 @@ import { Inter } from "next/font/google";
 import "./globals.css";
 import { Navbar } from "@/components/layout/Navbar";
 import { GlobalProvider } from "@/lib/GlobalContext";
+import { ClientPadding } from "@/components/layout/ClientPadding";
 
 const inter = Inter({ subsets: ["latin"] });
 
@@ -20,9 +21,9 @@ export default function RootLayout({
     <html lang="en">
       <body className={inter.className}>
         <GlobalProvider>
-          <div className="main-layout" style={{ paddingBottom: '80px' }}>
+          <ClientPadding>
             {children}
-          </div>
+          </ClientPadding>
           <Navbar />
         </GlobalProvider>
       </body>
