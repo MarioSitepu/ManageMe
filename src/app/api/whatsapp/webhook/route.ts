@@ -536,6 +536,18 @@ async function handleWeekExpenses(userId: string): Promise<string> {
 // ==========================================
 async function handleTodaySchedule(userId: string): Promise<string> {
     try {
+        // Auto-pull from Google Calendar to ensure schedule is fresh
+        try {
+            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+            await fetch(`${baseUrl}/api/google/pull`, {
+                method: 'POST',
+                body: JSON.stringify({ userId }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (syncError) {
+            console.error('Background Google Calendar sync failed:', syncError);
+        }
+
         const today = new Date();
         const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
 
