@@ -15,7 +15,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function FinancePage() {
-    const { state, addAccount, addExpense, updateDailyBudget } = useGlobal();
+    const { state, addAccount, addExpense, deleteExpense, updateDailyBudget } = useGlobal();
     const [tab, setTab] = useState<Tab>('overview');
     const [showAddExpense, setShowAddExpense] = useState(false);
     const [showAddAccount, setShowAddAccount] = useState(false);
@@ -206,12 +206,12 @@ export default function FinancePage() {
                         <Card key={date}>
                             <p className="section-label" style={{ marginBottom: '12px' }}>{date}</p>
                             {expenses.map(exp => (
-                                <div key={exp.id} className="list-item">
+                                <div key={exp.id} className="list-item" style={{ display: 'flex', alignItems: 'center' }}>
                                     <div style={{
                                         width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
                                         background: CATEGORY_COLORS[exp.category] || '#64748b'
                                     }} />
-                                    <div style={{ flex: 1, minWidth: 0 }}>
+                                    <div style={{ flex: 1, minWidth: 0, paddingLeft: '8px' }}>
                                         <p style={{ fontWeight: 500, color: 'var(--text)', fontSize: '0.9rem', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                                             {exp.description || exp.category}
                                         </p>
@@ -219,9 +219,21 @@ export default function FinancePage() {
                                             {exp.category}{exp.accountName ? ` • ${exp.accountName}` : ''}
                                         </p>
                                     </div>
-                                    <span style={{ fontWeight: 600, color: 'var(--danger)', fontSize: '0.9rem', flexShrink: 0 }}>
-                                        -{formatRupiah(exp.amount)}
-                                    </span>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <span style={{ fontWeight: 600, color: 'var(--danger)', fontSize: '0.9rem', flexShrink: 0 }}>
+                                            -{formatRupiah(exp.amount)}
+                                        </span>
+                                        <button
+                                            onClick={() => deleteExpense(exp.id)}
+                                            style={{
+                                                background: 'none', border: 'none', color: 'var(--danger)',
+                                                cursor: 'pointer', fontSize: '1rem', padding: '4px', opacity: 0.7
+                                            }}
+                                            title="Delete transaction"
+                                        >
+                                            🗑️
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </Card>

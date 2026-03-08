@@ -59,6 +59,18 @@ export async function GET(request: Request) {
     for (const user of users) {
         if (!user.phoneNumber) continue;
 
+        // Auto-pull from Google Calendar (if user has it linked) before checking reminders
+        try {
+            const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
+            await fetch(`${baseUrl}/api/google/pull`, {
+                method: 'POST',
+                body: JSON.stringify({ userId: user.id }),
+                headers: { 'Content-Type': 'application/json' }
+            });
+        } catch (syncErr) {
+            console.error(`[Reminder Cron] Failed to auto-sync GCal for user ${user.id}`, syncErr);
+        }
+
         // Find events starting at exactly 1 hour from now (±3 minute window)
         const events = await prisma.event.findMany({
             where: { userId: user.id }

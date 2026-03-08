@@ -30,6 +30,33 @@ const tools = [
     {
         type: 'function' as const,
         function: {
+            name: 'delete_expense',
+            description: 'Delete an expense/pengeluaran. Use when user wants to delete/hapus a transaction, e.g., "hapus pengeluaran grab 50rb tadi", "hapus yang terakhir".',
+            parameters: {
+                type: 'object',
+                properties: {
+                    description: { type: 'string', description: 'The description of the expense to delete (if specified)' },
+                }
+            }
+        }
+    },
+    {
+        type: 'function' as const,
+        function: {
+            name: 'set_daily_limit',
+            description: 'Set daily expense limit/budget. Use when user says "atur limit harian jadi 100rb" or "set daily budget to 100000".',
+            parameters: {
+                type: 'object',
+                properties: {
+                    amount: { type: 'number', description: 'The limit amount in Rupiah' }
+                },
+                required: ['amount']
+            }
+        }
+    },
+    {
+        type: 'function' as const,
+        function: {
             name: 'get_balance',
             description: 'Get account balances. Use when user asks about saldo/balance/uang.',
             parameters: { type: 'object', properties: {} }
@@ -242,6 +269,15 @@ async function processCommand(text: string, userId: string): Promise<string> {
         const input = text.replace(/^(add|catat)\s+/, '').trim();
         return await parseAndAddExpense(input, userId);
     }
+    if (text.startsWith('hapus ')) {
+        const desc = text.replace(/^hapus\s+/, '').trim();
+        return await handleDeleteExpense(desc, userId);
+    }
+    if (text.startsWith('limit ')) {
+        const amtStr = text.replace(/^limit\s+/, '').replace(/\D/g, '');
+        const amt = parseInt(amtStr);
+        if (!isNaN(amt)) return await handleSetDailyLimit(amt, userId);
+    }
     if (['balance', 'saldo', 'cek saldo', 'sisa uang'].includes(text)) {
         return await handleGetBalance(userId);
     }
@@ -327,6 +363,8 @@ async function processWithGroq(text: string, userId: string): Promise<string> {
                     content: `You are TrackMe Bot, a WhatsApp assistant for expense tracking, schedule management, notes, and todos.
 You understand Indonesian and English. Always use the provided tools/functions.
 - Spending/purchase → add_expense. Convert: "50rb"=50000, "100k"=100000, "50 ribu"=50000
+- Delete expense → delete_expense (provide description if mentioned, else empty)
+- Set daily limit/budget → set_daily_limit
 - Balance/saldo → get_balance
 - Today's expenses → get_today_expenses
 - Weekly expenses → get_week_expenses
@@ -370,6 +408,10 @@ You understand Indonesian and English. Always use the provided tools/functions.
         switch (functionName) {
             case 'add_expense':
                 return await handleAddExpense(args.amount, args.category, args.description, userId);
+            case 'delete_expense':
+                return await handleDeleteExpense(args.description, userId);
+            case 'set_daily_limit':
+                return await handleSetDailyLimit(args.amount, userId);
             case 'get_balance':
                 return await handleGetBalance(userId);
             case 'get_today_expenses':
@@ -413,6 +455,8 @@ function getMenuMessage(): string {
 💰 *Keuangan:*
 • "beli nasi goreng 50rb" (natural)
 • *add 50000 food nasi goreng*
+• *hapus [nama]* — hapus transaksi terakhir
+• *limit [jumlah]* — atur batas harian
 • *saldo* — cek saldo
 • *hari ini* — pengeluaran hari ini
 • *minggu ini* — pengeluaran minggu ini
@@ -464,6 +508,46 @@ async function handlePullFromGoogle(userId: string): Promise<string> {
 // ==========================================
 // EXPENSE HANDLERS
 // ==========================================
+async function handleDeleteExpense(description: string | undefined, userId: string): Promise<string> {
+    try {
+        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const expenses = await prisma.expense.findMany({
+            where: { userId, date: { gte: today } },
+            orderBy: { createdAt: 'desc' }
+        });
+
+        if (expenses.length === 0) return `❌ Tidak ada transaksi hari ini untuk dihapus.`;
+
+        let toDelete = expenses[0]; // default to latest
+        if (description) {
+            const lowerDesc = description.toLowerCase();
+            const matched = expenses.find((e: { description: string; category: string }) =>
+                e.description.toLowerCase().includes(lowerDesc) || e.category.toLowerCase().includes(lowerDesc)
+            );
+            if (matched) toDelete = matched;
+        }
+
+        await prisma.expense.delete({ where: { id: toDelete.id } });
+        return `✅ *Transaksi Dihapus!*\n\n❌ ~~${toDelete.description} (Rp ${toDelete.amount.toLocaleString('id-ID')})~~`;
+    } catch (e) {
+        console.error('Delete expense error:', e);
+        return `❌ Gagal menghapus transaksi.`;
+    }
+}
+
+async function handleSetDailyLimit(amount: number, userId: string): Promise<string> {
+    try {
+        await prisma.user.update({
+            where: { id: userId },
+            data: { dailyBudget: amount }
+        });
+        return `📊 *Limit Harian Diperbarui!*\n\nBatas harian kamu sekarang *Rp ${amount.toLocaleString('id-ID')}*.`;
+    } catch (e) {
+        console.error('Set limit error:', e);
+        return `❌ Gagal mengatur limit harian.`;
+    }
+}
+
 async function handleAddExpense(amount: number, category: string, description: string, userId: string): Promise<string> {
     try {
         await prisma.expense.create({ data: { amount, category, description, userId } });

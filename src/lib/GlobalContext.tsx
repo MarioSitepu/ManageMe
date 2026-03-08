@@ -5,6 +5,7 @@ import { initialUser, UserState, EventType, CalendarEvent, Habit } from './store
 interface GlobalContextType {
     state: UserState;
     addExpense: (amount: number, category: string, description: string, accountId?: string) => Promise<void>;
+    deleteExpense: (id: string) => Promise<void>;
     addPoints: (points: number) => void;
     addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<void>;
     updateEvent: (id: string, updates: Partial<CalendarEvent>) => Promise<void>;
@@ -128,6 +129,20 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         } catch (error) {
             console.error("Failed to save expense", error);
             // Revert on failure? Or just keep local
+        }
+    };
+
+    const deleteExpense = async (id: string) => {
+        // Optimistic
+        setState(prev => ({
+            ...prev,
+            expenses: prev.expenses.filter(e => e.id !== id)
+        }));
+
+        try {
+            await fetch(`/api/expenses/${id}`, { method: 'DELETE' });
+        } catch (error) {
+            console.error("Failed to delete expense", error);
         }
     };
 
@@ -391,6 +406,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         <GlobalContext.Provider value={{
             state,
             addExpense,
+            deleteExpense,
             addPoints,
             addAccount,
             addEvent,
