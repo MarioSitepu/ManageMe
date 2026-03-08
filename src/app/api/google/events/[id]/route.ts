@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { getAuthClientForUser } from '@/lib/googleCalendar';
+import { getSession } from '@/lib/auth';
 
 // Update a Google Calendar event by its gcal event ID
 export async function PUT(
@@ -12,7 +13,10 @@ export async function PUT(
         const body = await request.json();
         const { title, startTime, endTime, date, day, isRecurring, description, location, type } = body;
 
-        const auth = await getAuthClientForUser('default-user');
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const auth = await getAuthClientForUser(session.userId);
         const calendar = google.calendar({ version: 'v3', auth });
 
         // Build the event date
@@ -86,7 +90,11 @@ export async function DELETE(
 ) {
     try {
         const { id: googleEventId } = await params;
-        const auth = await getAuthClientForUser('default-user');
+
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+        const auth = await getAuthClientForUser(session.userId);
         const calendar = google.calendar({ version: 'v3', auth });
 
         await calendar.events.delete({

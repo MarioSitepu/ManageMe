@@ -2,12 +2,16 @@ import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { getAuthClientForUser } from '@/lib/googleCalendar';
 import { prisma } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 // Debug endpoint to test Google Calendar connection
 export async function GET() {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
         // Check if user has tokens stored
-        const user = await prisma.user.findFirst();
+        const user = await prisma.user.findUnique({ where: { id: session.userId } });
         if (!user) {
             return NextResponse.json({ error: 'No user found in database' }, { status: 404 });
         }
@@ -24,7 +28,7 @@ export async function GET() {
         }
 
         // Try to fetch calendar list
-        const auth = await getAuthClientForUser('default-user');
+        const auth = await getAuthClientForUser(session.userId);
         const calendar = google.calendar({ version: 'v3', auth });
 
         const calList = await calendar.calendarList.list();

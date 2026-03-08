@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { getAuthClientForUser } from '@/lib/googleCalendar';
+import { getSession } from '@/lib/auth';
 
 // Returns Google Calendar events in CalendarEvent format for the web app
 export async function GET(request: Request) {
@@ -8,7 +9,10 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const days = parseInt(searchParams.get('days') || '60');
 
-        const auth = await getAuthClientForUser('default-user');
+        const session = await getSession();
+        if (!session) return NextResponse.json({ events: [], connected: false, error: 'Unauthorized' }, { status: 401 });
+
+        const auth = await getAuthClientForUser(session.userId);
         const calendar = google.calendar({ version: 'v3', auth });
 
         const now = new Date();

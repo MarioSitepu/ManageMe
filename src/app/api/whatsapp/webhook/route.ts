@@ -175,7 +175,28 @@ export async function POST(request: Request) {
 
         console.log('Received WhatsApp message:', { text, phone });
 
-        const response = await processMessage(text, 'default-user');
+        // Clean phone number (e.g. 62812... -> 812...)
+        const cleanPhone = phone.replace(/\D/g, '');
+        const phoneSuffix = cleanPhone.startsWith('62') ? cleanPhone.substring(2)
+            : cleanPhone.startsWith('0') ? cleanPhone.substring(1)
+                : cleanPhone;
+
+        // Lookup user by phone suffix
+        const user = await prisma.user.findFirst({
+            where: {
+                phoneNumber: {
+                    endsWith: phoneSuffix
+                }
+            }
+        });
+
+        if (!user) {
+            const unregisteredMsg = `❌ *Nomor Belum Terdaftar*\n\nNomor WhatsApp ini belum terhubung ke akun TrackMe mana pun.\n\nSilakan login ke Web TrackMe (Google Login) lalu masukkan nomor Anda di menu *Profile* agar bot ini bisa mencatat ke akun Anda.`;
+            await sendWhatsAppReply(phone, unregisteredMsg);
+            return NextResponse.json({ success: true, response: 'Unregistered user' });
+        }
+
+        const response = await processMessage(text, user.id);
 
         if (response) {
             await sendWhatsAppReply(phone, response);

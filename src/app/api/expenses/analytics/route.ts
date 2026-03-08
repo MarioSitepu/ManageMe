@@ -1,11 +1,15 @@
 import { NextResponse } from 'next/server';
 import { prisma, handleDatabaseError } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 // GET analytics data for expenses
 export async function GET(request: Request) {
     try {
+        const session = await getSession();
+        if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        const userId = session.userId;
+
         const { searchParams } = new URL(request.url);
-        const userId = searchParams.get('userId') || 'default-user';
         const days = parseInt(searchParams.get('days') || '30');
 
         const startDate = new Date();

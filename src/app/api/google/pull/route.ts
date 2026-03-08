@@ -2,11 +2,21 @@ import { NextResponse } from 'next/server';
 import { google } from 'googleapis';
 import { prisma } from '@/lib/db';
 import { getAuthClientForUser } from '@/lib/googleCalendar';
+import { getSession } from '@/lib/auth';
 
 // Pull events from Google Calendar → save to local DB
-export async function POST() {
+export async function POST(request: Request) {
     try {
-        const auth = await getAuthClientForUser('default-user');
+        const session = await getSession();
+        let requestBody = {};
+        try { requestBody = await request.json(); } catch (e) { }
+        const userId = session?.userId || (requestBody as any).userId;
+
+        if (!userId) {
+            return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+        }
+
+        const auth = await getAuthClientForUser(userId);
         const calendar = google.calendar({ version: 'v3', auth });
 
         // Fetch events from Google Calendar (next 30 days)
@@ -76,7 +86,7 @@ export async function POST() {
                     description: gEvent.description || null,
                     location: gEvent.location || null,
                     googleEventId: gEvent.id,
-                    userId: 'default-user',
+                    userId: userId,
                 }
             });
             created++;

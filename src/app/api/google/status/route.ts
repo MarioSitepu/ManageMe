@@ -1,9 +1,13 @@
 import { NextResponse } from 'next/server';
 import { isGoogleCalendarConnected } from '@/lib/googleCalendar';
+import { getSession } from '@/lib/auth';
 
 export async function GET() {
     try {
-        const connected = await isGoogleCalendarConnected('default-user');
+        const session = await getSession();
+        if (!session) return NextResponse.json({ connected: false, error: 'Unauthorized' }, { status: 401 });
+
+        const connected = await isGoogleCalendarConnected(session.userId);
         return NextResponse.json({
             connected,
             authUrl: connected ? null : '/api/google/auth',
