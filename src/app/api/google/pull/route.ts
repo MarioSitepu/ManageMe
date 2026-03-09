@@ -35,16 +35,11 @@ export async function POST(request: Request) {
 
         const gEvents = res.data.items || [];
         let created = 0;
+        let updated = 0;
         let skipped = 0;
 
         for (const gEvent of gEvents) {
             if (!gEvent.id || !gEvent.summary) { skipped++; continue; }
-
-            // Check if already synced (exists in local DB by googleEventId)
-            const existing = await prisma.event.findFirst({
-                where: { googleEventId: gEvent.id }
-            });
-            if (existing) { skipped++; continue; }
 
             // Parse time
             const startStr = gEvent.start?.dateTime || gEvent.start?.date;
@@ -52,16 +47,16 @@ export async function POST(request: Request) {
 
             const startDate = new Date(startStr);
             const startTime = gEvent.start?.dateTime
-                ? startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                ? startDate.toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })
                 : '00:00';
 
             let endTime: string | undefined;
             if (gEvent.end?.dateTime) {
                 const endDate = new Date(gEvent.end.dateTime);
-                endTime = endDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+                endTime = endDate.toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' });
             }
 
-            const dayName = startDate.toLocaleDateString('en-US', { weekday: 'long' });
+            const dayName = startDate.toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta', weekday: 'long' });
             const isRecurring = !!(gEvent.recurrence && gEvent.recurrence.length > 0);
 
             // Determine event type from Google Calendar color/description
@@ -72,6 +67,31 @@ export async function POST(request: Request) {
             else if (title.includes('meeting') || title.includes('rapat')) type = 'meeting';
             else if (title.includes('tugas') || title.includes('assignment')) type = 'assignment';
             else if (title.includes('belajar') || title.includes('study')) type = 'study';
+
+            // Check if already synced (exists in local DB by googleEventId)
+            const existing = await prisma.event.findFirst({
+                where: { googleEventId: gEvent.id }
+            });
+
+            if (existing) {
+                await prisma.event.update({
+                    where: { id: existing.id },
+                    data: {
+                        title: gEvent.summary,
+                        type,
+                        startTime,
+                        endTime,
+                        day: isRecurring ? dayName : dayName,
+                        date: gEvent.start?.date ? new Date(gEvent.start.date) : null,
+                        isRecurring,
+                        recurringPattern: isRecurring ? 'weekly' : null,
+                        description: gEvent.description || null,
+                        location: gEvent.location || null,
+                    }
+                });
+                updated++;
+                continue;
+            }
 
             await prisma.event.create({
                 data: {
@@ -94,8 +114,9 @@ export async function POST(request: Request) {
 
         return NextResponse.json({
             success: true,
-            message: `Pulled ${created} new events from Google Calendar. ${skipped} skipped (already synced or invalid).`,
+            message: `Pulled ${created} new events, updated ${updated} events. ${skipped} skipped.`,
             created,
+            updated,
             skipped
         });
     } catch (error: any) {

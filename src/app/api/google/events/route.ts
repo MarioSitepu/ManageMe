@@ -41,18 +41,18 @@ export async function GET(request: Request) {
                 const startDate = new Date(startStr);
 
                 const startTime = e.start?.dateTime
-                    ? startDate.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                    ? startDate.toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })
                     : '00:00';
 
                 const endTime = endStr && e.end?.dateTime
-                    ? new Date(endStr).toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' })
+                    ? new Date(endStr).toLocaleTimeString('en-GB', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })
                     : undefined;
 
                 const dateStr = e.start?.date
                     ? e.start.date
                     : startDate.toISOString().split('T')[0];
 
-                const dayName = startDate.toLocaleDateString('en-US', { weekday: 'long' });
+                const dayName = startDate.toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta', weekday: 'long' });
                 const isRecurring = !!(e.recurrence && e.recurrence.length > 0);
 
                 // Determine type from title keywords

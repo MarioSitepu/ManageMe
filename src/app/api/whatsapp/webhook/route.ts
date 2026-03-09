@@ -512,7 +512,11 @@ function getMenuMessage(): string {
 async function handlePullFromGoogle(userId: string): Promise<string> {
     try {
         const baseUrl = process.env.NEXTAUTH_URL || 'http://localhost:3000';
-        const res = await fetch(`${baseUrl}/api/google/pull`, { method: 'POST' });
+        const res = await fetch(`${baseUrl}/api/google/pull`, {
+            method: 'POST',
+            body: JSON.stringify({ userId }),
+            headers: { 'Content-Type': 'application/json' }
+        });
         const data = await res.json();
 
         if (!res.ok) {
@@ -713,7 +717,7 @@ async function handleTodaySchedule(userId: string): Promise<string> {
         }
 
         const today = new Date();
-        const dayName = today.toLocaleDateString('en-US', { weekday: 'long' });
+        const dayName = today.toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta', weekday: 'long' });
 
         const recurringEvents = await prisma.event.findMany({
             where: { userId, isRecurring: true, day: dayName },
@@ -752,7 +756,7 @@ async function handleAddEvent(
 ): Promise<string> {
     try {
         const recurring = isRecurring ?? (type === 'class');
-        const eventDay = day || new Date().toLocaleDateString('en-US', { weekday: 'long' });
+        const eventDay = day || new Date().toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta', weekday: 'long' });
 
         const newEvent = await prisma.event.create({
             data: {
@@ -857,7 +861,7 @@ async function handleListTodos(userId: string): Promise<string> {
         let msg = `✅ *Daftar Tugas* (${todos.length})\n\n`;
         todos.forEach((t: { text: string; dueDate: Date | null }, i: number) => {
             msg += `${i + 1}. ${t.text}`;
-            if (t.dueDate) msg += ` 📅 ${t.dueDate.toLocaleDateString('id-ID')}`;
+            if (t.dueDate) msg += ` 📅 ${t.dueDate.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta' })}`;
             msg += `\n`;
         });
         msg += `\nKetik *done [nomor]* untuk menyelesaikan.`;

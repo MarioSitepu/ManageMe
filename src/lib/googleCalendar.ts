@@ -243,9 +243,9 @@ export async function getUpcomingFromGoogle(userId: string, days: number = 7): P
         for (const e of events) {
             const start = e.start?.dateTime || e.start?.date || '';
             const startDate = new Date(start);
-            const dateStr = startDate.toLocaleDateString('id-ID', { weekday: 'short', day: 'numeric', month: 'short' });
+            const dateStr = startDate.toLocaleDateString('id-ID', { timeZone: 'Asia/Jakarta', weekday: 'short', day: 'numeric', month: 'short' });
             const timeStr = e.start?.dateTime
-                ? startDate.toLocaleTimeString('id-ID', { hour: '2-digit', minute: '2-digit' })
+                ? startDate.toLocaleTimeString('id-ID', { timeZone: 'Asia/Jakarta', hour: '2-digit', minute: '2-digit' })
                 : 'Seharian';
             msg += `📌 *${e.summary}*\n   📅 ${dateStr} 🕐 ${timeStr}\n\n`;
         }
