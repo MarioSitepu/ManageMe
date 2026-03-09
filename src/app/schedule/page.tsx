@@ -97,6 +97,7 @@ export default function SchedulePage() {
             const evData = await evRes.json();
             if (evData.connected) setGcalEvents(evData.events || []);
             alert(`✅ ${data.created} event diimport!`);
+            window.location.reload(); // Force GlobalContext to refetch DB state
         } catch { alert('❌ Gagal sync'); } finally { setSyncing(false); }
     };
 

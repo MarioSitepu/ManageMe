@@ -57,6 +57,7 @@ export async function POST(request: Request) {
             }
 
             const dayName = startDate.toLocaleDateString('en-US', { timeZone: 'Asia/Jakarta', weekday: 'long' });
+            const localDateStr = startDate.toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }); // YYYY-MM-DD
             const isRecurring = !!(gEvent.recurrence && gEvent.recurrence.length > 0);
 
             // Determine event type from Google Calendar color/description
@@ -82,7 +83,7 @@ export async function POST(request: Request) {
                         startTime,
                         endTime,
                         day: isRecurring ? dayName : dayName,
-                        date: gEvent.start?.date ? new Date(gEvent.start.date) : null,
+                        date: new Date(localDateStr),
                         isRecurring,
                         recurringPattern: isRecurring ? 'weekly' : null,
                         description: gEvent.description || null,
@@ -100,7 +101,7 @@ export async function POST(request: Request) {
                     startTime,
                     endTime,
                     day: isRecurring ? dayName : dayName,
-                    date: gEvent.start?.date ? new Date(gEvent.start.date) : null,
+                    date: new Date(localDateStr),
                     isRecurring,
                     recurringPattern: isRecurring ? 'weekly' : null,
                     description: gEvent.description || null,
