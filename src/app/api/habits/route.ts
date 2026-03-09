@@ -15,8 +15,8 @@ export async function GET(request: Request) {
         });
 
         // Reset logic: if it's a new day, set completed = false
-        const now = new Date();
-        const todayStr = now.toDateString();
+        const { getLocalToday } = require('@/lib/dateUtils');
+        const todayStr = getLocalToday().toDateString();
 
         let needsRefetch = false;
 

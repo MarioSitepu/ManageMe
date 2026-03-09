@@ -6,6 +6,11 @@ import { getSession } from '@/lib/auth';
 
 // Debug endpoint to test Google Calendar connection
 export async function GET() {
+    // Only allow in development or if explicitly enabled
+    if (process.env.NODE_ENV === 'production' && process.env.ENABLE_DEBUG !== 'true') {
+        return NextResponse.json({ error: 'Debug mode disabled in production' }, { status: 403 });
+    }
+
     try {
         const session = await getSession();
         if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });

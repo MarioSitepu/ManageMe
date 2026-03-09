@@ -5,8 +5,7 @@ import { syncEventToGoogle, getUpcomingFromGoogle } from '@/lib/googleCalendar';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
-// Helper to get today's date adjusted precisely for Asia/Jakarta timezone
-const getLocalToday = () => new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
+import { getLocalToday } from '@/lib/dateUtils';
 
 // Tool definitions for Groq (OpenAI-compatible format)
 const tools = [
