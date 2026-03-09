@@ -5,6 +5,9 @@ import { syncEventToGoogle, getUpcomingFromGoogle } from '@/lib/googleCalendar';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
+// Helper to get today's date adjusted precisely for Asia/Jakarta timezone
+const getLocalToday = () => new Date(new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' }));
+
 // Tool definitions for Groq (OpenAI-compatible format)
 const tools = [
     {
@@ -536,7 +539,7 @@ async function handlePullFromGoogle(userId: string): Promise<string> {
 // ==========================================
 async function handleDeleteExpense(description: string | undefined, userId: string): Promise<string> {
     try {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const today = getLocalToday();
         const expenses = await prisma.expense.findMany({
             where: { userId, date: { gte: today } },
             orderBy: { createdAt: 'desc' },
@@ -653,7 +656,7 @@ async function handleGetBalance(userId: string): Promise<string> {
 
 async function handleTodayExpenses(userId: string): Promise<string> {
     try {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const today = getLocalToday();
         const expenses = await prisma.expense.findMany({
             where: { userId, date: { gte: today } },
             orderBy: { date: 'desc' },
@@ -678,7 +681,7 @@ async function handleTodayExpenses(userId: string): Promise<string> {
 
 async function handleWeekExpenses(userId: string): Promise<string> {
     try {
-        const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
+        const weekAgo = getLocalToday(); weekAgo.setDate(weekAgo.getDate() - 7);
         const expenses = await prisma.expense.findMany({
             where: { userId, date: { gte: weekAgo } },
             include: { account: true }
@@ -724,7 +727,7 @@ async function handleTodaySchedule(userId: string): Promise<string> {
             orderBy: { startTime: 'asc' }
         });
 
-        const todayDate = new Date(); todayDate.setHours(0, 0, 0, 0);
+        const todayDate = getLocalToday();
         const tomorrowDate = new Date(todayDate); tomorrowDate.setDate(tomorrowDate.getDate() + 1);
 
         const dateEvents = await prisma.event.findMany({
@@ -763,7 +766,7 @@ async function handleAddEvent(
                 title, type, startTime,
                 endTime: endTime || null,
                 day: recurring ? eventDay : null,
-                date: recurring ? null : new Date(),
+                date: recurring ? null : getLocalToday(),
                 isRecurring: recurring,
                 recurringPattern: recurring ? 'weekly' : null,
                 location: location || null,
@@ -795,7 +798,7 @@ async function handleAddEvent(
 // ==========================================
 async function handleAddNote(content: string, userId: string): Promise<string> {
     try {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const today = getLocalToday();
 
         await prisma.dailyNote.upsert({
             where: { userId_date: { userId, date: today } },
@@ -812,7 +815,7 @@ async function handleAddNote(content: string, userId: string): Promise<string> {
 
 async function handleGetNotes(userId: string): Promise<string> {
     try {
-        const today = new Date(); today.setHours(0, 0, 0, 0);
+        const today = getLocalToday();
         const tomorrow = new Date(today); tomorrow.setDate(tomorrow.getDate() + 1);
 
         const note = await prisma.dailyNote.findFirst({

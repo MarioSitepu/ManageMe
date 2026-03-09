@@ -16,8 +16,9 @@ export async function GET(request: Request) {
         const calendar = google.calendar({ version: 'v3', auth });
 
         const now = new Date();
-        // Start from beginning of current month
-        const start = new Date(now.getFullYear(), now.getMonth(), 1);
+        const localDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+        const [year, month] = localDateStr.split('-').map(Number);
+        const start = new Date(year, month - 1, 1);
         const future = new Date();
         future.setDate(future.getDate() + days);
 

@@ -12,7 +12,8 @@ export async function GET(request: Request) {
         const { searchParams } = new URL(request.url);
         const days = parseInt(searchParams.get('days') || '30');
 
-        const startDate = new Date();
+        const startDateStr = new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Jakarta' });
+        const startDate = new Date(startDateStr);
         startDate.setDate(startDate.getDate() - days);
 
         // Get expenses within date range
