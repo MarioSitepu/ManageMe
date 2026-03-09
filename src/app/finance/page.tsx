@@ -15,14 +15,16 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function FinancePage() {
-    const { state, addAccount, addExpense, deleteExpense, updateDailyBudget } = useGlobal();
+    const { state, addAccount, updateAccount, deleteAccount, addExpense, deleteExpense, updateDailyBudget } = useGlobal();
     const [tab, setTab] = useState<Tab>('overview');
     const [showAddExpense, setShowAddExpense] = useState(false);
     const [showAddAccount, setShowAddAccount] = useState(false);
     const [isEditingBudget, setIsEditingBudget] = useState(false);
     const [budgetInput, setBudgetInput] = useState(state.dailyBudget.toString());
-    const [expenseForm, setExpenseForm] = useState({ amount: '', category: 'Food', description: '', accountId: '' });
+    const [expenseForm, setExpenseForm] = useState({ type: 'expense', amount: '', category: 'Food', description: '', accountId: '' });
     const [accountForm, setAccountForm] = useState({ name: '', type: 'BANK', balance: '', color: '#3b82f6' });
+    const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
+    const [editAccountForm, setEditAccountForm] = useState({ name: '', balance: '' });
 
     const accounts = state.accounts || [];
     const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
@@ -59,9 +61,9 @@ export default function FinancePage() {
     const handleAddExpense = async (e: React.FormEvent) => {
         e.preventDefault();
         if (!expenseForm.amount || !expenseForm.description) return;
-        await addExpense(parseFloat(expenseForm.amount), expenseForm.category, expenseForm.description, expenseForm.accountId);
+        await addExpense(parseFloat(expenseForm.amount), expenseForm.category, expenseForm.description, expenseForm.accountId, expenseForm.type as 'expense' | 'income');
         setShowAddExpense(false);
-        setExpenseForm({ amount: '', category: 'Food', description: '', accountId: '' });
+        setExpenseForm({ type: 'expense', amount: '', category: 'Food', description: '', accountId: '' });
     };
 
     const handleAddAccount = async (e: React.FormEvent) => {
@@ -142,10 +144,16 @@ export default function FinancePage() {
             {showAddExpense && (
                 <Card title="New Expense" style={{ marginBottom: '16px', borderColor: 'rgba(239,68,68,0.2)' }}>
                     <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
-                        <input placeholder="Description (e.g. Nasi Goreng)" value={expenseForm.description}
+                        <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
+                            <select value={expenseForm.type} onChange={e => setExpenseForm({ ...expenseForm, type: e.target.value })}>
+                                <option value="expense">Pengeluaran</option>
+                                <option value="income">Pemasukan</option>
+                            </select>
+                            <input type="number" placeholder="Amount (Rp)" value={expenseForm.amount}
+                                onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
+                        </div>
+                        <input placeholder="Description (e.g. Nasi Goreng, Gaji)" value={expenseForm.description}
                             onChange={e => setExpenseForm({ ...expenseForm, description: e.target.value })} />
-                        <input type="number" placeholder="Amount (Rp)" value={expenseForm.amount}
-                            onChange={e => setExpenseForm({ ...expenseForm, amount: e.target.value })} />
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px' }}>
                             <select value={expenseForm.category} onChange={e => setExpenseForm({ ...expenseForm, category: e.target.value })}>
                                 {['Food', 'Transport', 'Entertainment', 'Shopping', 'Bills', 'Other'].map(c => <option key={c}>{c}</option>)}
@@ -220,8 +228,8 @@ export default function FinancePage() {
                                         </p>
                                     </div>
                                     <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
-                                        <span style={{ fontWeight: 600, color: 'var(--danger)', fontSize: '0.9rem', flexShrink: 0 }}>
-                                            -{formatRupiah(exp.amount)}
+                                        <span style={{ fontWeight: 600, color: exp.type === 'income' ? 'var(--success)' : 'var(--danger)', fontSize: '0.9rem', flexShrink: 0 }}>
+                                            {exp.type === 'income' ? '+' : '-'}{formatRupiah(exp.amount)}
                                         </span>
                                         <button
                                             onClick={() => deleteExpense(exp.id)}
@@ -252,15 +260,31 @@ export default function FinancePage() {
                     )}
                     {accounts.map(acc => (
                         <Card key={acc.id} style={{ borderLeft: `3px solid ${acc.color || '#3b82f6'}` }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                <div>
-                                    <p style={{ fontWeight: 600, color: 'var(--text)' }}>{acc.name}</p>
-                                    <span className="badge badge-muted" style={{ marginTop: '4px' }}>{acc.type}</span>
+                            {editingAccountId === acc.id ? (
+                                <div style={{ display: 'flex', gap: '8px', alignItems: 'center' }}>
+                                    <input value={editAccountForm.name} onChange={e => setEditAccountForm({ ...editAccountForm, name: e.target.value })} style={{ flex: 1 }} placeholder="Name" />
+                                    <input type="number" value={editAccountForm.balance} onChange={e => setEditAccountForm({ ...editAccountForm, balance: e.target.value })} style={{ width: '100px' }} placeholder="Balance" />
+                                    <Button size="sm" variant="success" onClick={() => {
+                                        updateAccount(acc.id, { name: editAccountForm.name, balance: parseFloat(editAccountForm.balance) });
+                                        setEditingAccountId(null);
+                                    }}>Save</Button>
+                                    <Button size="sm" variant="ghost" onClick={() => setEditingAccountId(null)}>Cancel</Button>
                                 </div>
-                                <p style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text)' }}>
-                                    {formatRupiah(acc.balance)}
-                                </p>
-                            </div>
+                            ) : (
+                                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <div>
+                                        <p style={{ fontWeight: 600, color: 'var(--text)' }}>{acc.name}</p>
+                                        <span className="badge badge-muted" style={{ marginTop: '4px' }}>{acc.type}</span>
+                                    </div>
+                                    <div style={{ display: 'flex', alignItems: 'center', gap: '12px' }}>
+                                        <p style={{ fontSize: '1.125rem', fontWeight: 700, color: 'var(--text)' }}>
+                                            {formatRupiah(acc.balance)}
+                                        </p>
+                                        <button onClick={() => { setEditingAccountId(acc.id); setEditAccountForm({ name: acc.name, balance: acc.balance.toString() }) }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem', padding: '4px' }} title="Edit Account">✏️</button>
+                                        <button onClick={() => { if (window.confirm('Hapus akun ini? Transaksi yang menggunakan akun ini akan tetap ada namun tidak lagi terkait dengan akun ini.')) deleteAccount(acc.id) }} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1.2rem', padding: '4px', opacity: 0.8 }} title="Delete Account">🗑️</button>
+                                    </div>
+                                </div>
+                            )}
                         </Card>
                     ))}
                 </div>

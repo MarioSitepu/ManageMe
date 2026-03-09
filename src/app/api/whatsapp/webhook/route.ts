@@ -21,7 +21,8 @@ const tools = [
                         description: 'Category of expense',
                         enum: ['food', 'transport', 'shopping', 'entertainment', 'bills', 'other']
                     },
-                    description: { type: 'string', description: 'Description of what was purchased' }
+                    description: { type: 'string', description: 'Description of what was purchased' },
+                    accountName: { type: 'string', description: 'Name of the account used (e.g. BCA, Gopay, Cash), if specified' }
                 },
                 required: ['amount', 'category', 'description']
             }
@@ -37,6 +38,23 @@ const tools = [
                 properties: {
                     description: { type: 'string', description: 'The description of the expense to delete (if specified)' },
                 }
+            }
+        }
+    },
+    {
+        type: 'function' as const,
+        function: {
+            name: 'add_income',
+            description: 'Add a new income/pemasukan. Use this when user wants to record receiving money (e.g., gaji, transfer masuk, dikasih uang).',
+            parameters: {
+                type: 'object',
+                properties: {
+                    amount: { type: 'number', description: 'The amount of money received in Rupiah' },
+                    category: { type: 'string', description: 'Category of income (e.g., gaji, bonus, transfer, other)' },
+                    description: { type: 'string', description: 'Description of the income' },
+                    accountName: { type: 'string', description: 'Name of the account that received the money (e.g. BCA, Gopay), if specified' }
+                },
+                required: ['amount', 'category', 'description']
             }
         }
     },
@@ -342,7 +360,8 @@ async function parseAndAddExpense(input: string, userId: string): Promise<string
     }
 
     const description = parts.slice(2).join(' ');
-    return await handleAddExpense(amount, category, description, userId);
+    // Use the description directly as the accountName too, handleAddExpense will substring search it.
+    return await handleAddExpense(amount, category, description, description, userId);
 }
 
 // ==========================================
@@ -362,7 +381,8 @@ async function processWithGroq(text: string, userId: string): Promise<string> {
                     role: 'system',
                     content: `You are TrackMe Bot, a WhatsApp assistant for expense tracking, schedule management, notes, and todos.
 You understand Indonesian and English. Always use the provided tools/functions.
-- Spending/purchase → add_expense. Convert: "50rb"=50000, "100k"=100000, "50 ribu"=50000
+- Spending/purchase → add_expense. Convert: "50rb"=50000, "100k"=100000. Capture account name if mentioned (e.g. "pakai bca", "dari gopay" -> accountName: "bca" or "gopay").
+- Income/Salary/Receiving money → add_income. Capture account if mentioned (e.g. "masuk ke DANA").
 - Delete expense → delete_expense (provide description if mentioned, else empty)
 - Set daily limit/budget → set_daily_limit
 - Balance/saldo → get_balance
@@ -407,7 +427,9 @@ You understand Indonesian and English. Always use the provided tools/functions.
 
         switch (functionName) {
             case 'add_expense':
-                return await handleAddExpense(args.amount, args.category, args.description, userId);
+                return await handleAddExpense(args.amount, args.category, args.description, args.accountName, userId, 'expense');
+            case 'add_income':
+                return await handleAddExpense(args.amount, args.category, args.description, args.accountName, userId, 'income');
             case 'delete_expense':
                 return await handleDeleteExpense(args.description, userId);
             case 'set_daily_limit':
@@ -513,7 +535,8 @@ async function handleDeleteExpense(description: string | undefined, userId: stri
         const today = new Date(); today.setHours(0, 0, 0, 0);
         const expenses = await prisma.expense.findMany({
             where: { userId, date: { gte: today } },
-            orderBy: { createdAt: 'desc' }
+            orderBy: { createdAt: 'desc' },
+            include: { account: true }
         });
 
         if (expenses.length === 0) return `❌ Tidak ada transaksi hari ini untuk dihapus.`;
@@ -527,8 +550,21 @@ async function handleDeleteExpense(description: string | undefined, userId: stri
             if (matched) toDelete = matched;
         }
 
-        await prisma.expense.delete({ where: { id: toDelete.id } });
-        return `✅ *Transaksi Dihapus!*\n\n❌ ~~${toDelete.description} (Rp ${toDelete.amount.toLocaleString('id-ID')})~~`;
+        await prisma.$transaction(async (tx) => {
+            await tx.expense.delete({ where: { id: toDelete.id } });
+            if (toDelete.accountId) {
+                await tx.account.update({
+                    where: { id: toDelete.accountId },
+                    data: { balance: { increment: toDelete.amount } }
+                });
+            }
+        });
+
+        let msg = `✅ *Transaksi Dihapus!*\n\n❌ ~~${toDelete.description} (Rp ${toDelete.amount.toLocaleString('id-ID')})~~`;
+        if (toDelete.account) {
+            msg += `\n💰 Saldo ${toDelete.account.name} dikembalikan.`;
+        }
+        return msg;
     } catch (e) {
         console.error('Delete expense error:', e);
         return `❌ Gagal menghapus transaksi.`;
@@ -548,13 +584,48 @@ async function handleSetDailyLimit(amount: number, userId: string): Promise<stri
     }
 }
 
-async function handleAddExpense(amount: number, category: string, description: string, userId: string): Promise<string> {
+async function handleAddExpense(amount: number, category: string, description: string, accountName: string | undefined, userId: string, type: string = 'expense'): Promise<string> {
     try {
-        await prisma.expense.create({ data: { amount, category, description, userId } });
-        return `✅ *Pengeluaran Dicatat!*\n\n💵 Rp ${amount.toLocaleString('id-ID')}\n📁 ${category}\n📝 ${description}`;
+        let matchedAccount = null;
+
+        if (accountName) {
+            const accounts = await prisma.account.findMany({ where: { userId } });
+            const query = accountName.toLowerCase();
+            matchedAccount = accounts.find((a: { name: string; type: string }) =>
+                a.name.toLowerCase().includes(query) || a.type.toLowerCase().includes(query)
+            );
+
+            if (!matchedAccount) {
+                return `❌ Akun "${accountName}" tidak ditemukan.\n\nSilakan gunakan nama akun yang sudah ada (Bank/E-Wallet) atau cek daftarnya di Web TrackMe.`;
+            }
+        }
+
+        await prisma.$transaction(async (tx) => {
+            await tx.expense.create({
+                data: {
+                    amount, category, description, userId, type,
+                    accountId: matchedAccount ? matchedAccount.id : null
+                }
+            });
+
+            if (matchedAccount) {
+                const effect = type === 'income' ? amount : -amount;
+                await tx.account.update({
+                    where: { id: matchedAccount.id },
+                    data: { balance: { increment: effect } }
+                });
+            }
+        });
+
+        const isIncome = type === 'income';
+        let msg = `✅ *${isIncome ? 'Pemasukan' : 'Pengeluaran'} Dicatat!*\n\n💵 ${isIncome ? '+' : '-'}Rp ${amount.toLocaleString('id-ID')}\n📁 ${category}\n📝 ${description}`;
+        if (matchedAccount) {
+            msg += `\n💳 ${isIncome ? 'Masuk ke' : 'Menggunakan'}: *${matchedAccount.name}*`;
+        }
+        return msg;
     } catch (error) {
-        console.error('Add expense error:', error);
-        return `❌ Gagal menambahkan pengeluaran.`;
+        console.error('Add trans error:', error);
+        return `❌ Gagal menambahkan transaksi.`;
     }
 }
 
@@ -579,13 +650,19 @@ async function handleGetBalance(userId: string): Promise<string> {
 async function handleTodayExpenses(userId: string): Promise<string> {
     try {
         const today = new Date(); today.setHours(0, 0, 0, 0);
-        const expenses = await prisma.expense.findMany({ where: { userId, date: { gte: today } }, orderBy: { date: 'desc' } });
+        const expenses = await prisma.expense.findMany({
+            where: { userId, date: { gte: today } },
+            orderBy: { date: 'desc' },
+            include: { account: true }
+        });
         if (expenses.length === 0) return `📊 *Pengeluaran Hari Ini*\n\nBelum ada pengeluaran. 🎉`;
 
         const total = expenses.reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0);
         let msg = `📊 *Pengeluaran Hari Ini*\n\n`;
-        expenses.forEach((exp: { description: string; amount: number; category: string }) => {
-            msg += `• ${exp.description} — Rp ${exp.amount.toLocaleString('id-ID')} (${exp.category})\n`;
+        expenses.forEach((exp: any) => {
+            msg += `• ${exp.description} — Rp ${exp.amount.toLocaleString('id-ID')} (${exp.category})`;
+            if (exp.account) msg += ` [${exp.account.name}]`;
+            msg += '\n';
         });
         msg += `\n💰 *Total:* Rp ${total.toLocaleString('id-ID')}`;
         return msg;
@@ -598,7 +675,10 @@ async function handleTodayExpenses(userId: string): Promise<string> {
 async function handleWeekExpenses(userId: string): Promise<string> {
     try {
         const weekAgo = new Date(); weekAgo.setDate(weekAgo.getDate() - 7);
-        const expenses = await prisma.expense.findMany({ where: { userId, date: { gte: weekAgo } } });
+        const expenses = await prisma.expense.findMany({
+            where: { userId, date: { gte: weekAgo } },
+            include: { account: true }
+        });
         if (expenses.length === 0) return `📊 *Pengeluaran Minggu Ini*\n\nBelum ada pengeluaran.`;
 
         const total = expenses.reduce((sum: number, exp: { amount: number }) => sum + exp.amount, 0);

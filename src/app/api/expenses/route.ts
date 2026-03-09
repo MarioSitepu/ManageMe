@@ -33,7 +33,9 @@ export async function POST(request: Request) {
         if (!session) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
         const userId = session.userId;
         const body = await request.json();
-        const { amount, category, description, accountId } = body;
+        const { amount, category, description, accountId, type } = body;
+
+        const transType = type || 'expense';
 
         if (!amount || !category || !description) {
             return NextResponse.json(
@@ -50,6 +52,7 @@ export async function POST(request: Request) {
                     amount: parseFloat(amount),
                     category,
                     description,
+                    type: transType,
                     userId,
                     accountId,
                 },
@@ -62,12 +65,11 @@ export async function POST(request: Request) {
 
             // 2. Update Account Balance (if applicable)
             if (accountId) {
+                const effect = transType === 'income' ? parseFloat(amount) : -parseFloat(amount);
                 await tx.account.update({
                     where: { id: accountId },
                     data: {
-                        balance: {
-                            decrement: parseFloat(amount)
-                        }
+                        balance: { increment: effect }
                     }
                 });
             }

@@ -8,6 +8,7 @@ export interface Expense {
     date: string;
     accountId?: string;
     accountName?: string;
+    type?: string;
 }
 
 export interface Account {

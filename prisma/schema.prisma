@@ -75,6 +75,7 @@ model Expense {
   amount    Float
   description String   // New field: name/description of expense
   category  String
+  type      String   @default("expense") // "expense" | "income"
   date      DateTime @default(now())
   createdAt DateTime @default(now())
   

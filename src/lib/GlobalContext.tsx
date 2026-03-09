@@ -1,10 +1,10 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { initialUser, UserState, EventType, CalendarEvent, Habit } from './store';
+import { initialUser, UserState, EventType, CalendarEvent, Habit, Account } from './store';
 
 interface GlobalContextType {
     state: UserState;
-    addExpense: (amount: number, category: string, description: string, accountId?: string) => Promise<void>;
+    addExpense: (amount: number, category: string, description: string, accountId?: string, type?: 'expense' | 'income' | string) => Promise<void>;
     deleteExpense: (id: string) => Promise<void>;
     addPoints: (points: number) => void;
     addEvent: (event: Omit<CalendarEvent, 'id'>) => Promise<void>;
@@ -12,6 +12,8 @@ interface GlobalContextType {
     deleteEvent: (id: string) => Promise<void>;
     checkIn: (onTime: boolean) => void;
     addAccount: (name: string, type: string, balance: number, color?: string) => Promise<void>;
+    updateAccount: (id: string, updates: Partial<Account>) => Promise<void>;
+    deleteAccount: (id: string) => Promise<void>;
 
     updateSettings: (phoneNumber: string, notificationSettings: UserState['notificationSettings']) => void;
     updateDailyNote: (date: string, content: string) => void;
@@ -94,7 +96,7 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
         localStorage.setItem('trackme_state', JSON.stringify(state));
     }, [state]);
 
-    const addExpense = async (amount: number, category: string, description: string, accountId?: string) => {
+    const addExpense = async (amount: number, category: string, description: string, accountId?: string, type: string = 'expense') => {
         // Optimistic Update
         const tempId = Math.random().toString(36).substr(2, 9);
         const newExpense = {
@@ -102,20 +104,24 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             amount,
             category,
             description,
+            type,
             date: new Date().toISOString(),
             accountId
         };
 
         setState(prev => ({
             ...prev,
-            expenses: [newExpense, ...prev.expenses]
+            expenses: [newExpense, ...prev.expenses],
+            accounts: accountId
+                ? prev.accounts.map(a => a.id === accountId ? { ...a, balance: type === 'income' ? a.balance + amount : a.balance - amount } : a)
+                : prev.accounts
         }));
 
         try {
             const res = await fetch('/api/expenses', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ amount, category, description, accountId, userId: 'default-user' })
+                body: JSON.stringify({ amount, category, description, accountId, type, userId: 'default-user' })
             });
 
             if (res.ok) {
@@ -133,10 +139,14 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
     };
 
     const deleteExpense = async (id: string) => {
+        const expenseToDelete = state.expenses.find(e => e.id === id);
         // Optimistic
         setState(prev => ({
             ...prev,
-            expenses: prev.expenses.filter(e => e.id !== id)
+            expenses: prev.expenses.filter(e => e.id !== id),
+            accounts: expenseToDelete?.accountId
+                ? prev.accounts.map(a => a.id === expenseToDelete.accountId ? { ...a, balance: expenseToDelete.type === 'income' ? a.balance - expenseToDelete.amount : a.balance + expenseToDelete.amount } : a)
+                : prev.accounts
         }));
 
         try {
@@ -178,6 +188,37 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             }
         } catch (error) {
             console.error("Failed to add account", error);
+        }
+    };
+
+    const updateAccount = async (id: string, updates: Partial<Account>) => {
+        setState(prev => ({
+            ...prev,
+            accounts: prev.accounts.map(a => a.id === id ? { ...a, ...updates } : a)
+        }));
+
+        try {
+            await fetch(`/api/accounts/${id}`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ ...updates, userId: 'default-user' })
+            });
+        } catch (error) {
+            console.error("Failed to update account", error);
+        }
+    };
+
+    const deleteAccount = async (id: string) => {
+        setState(prev => ({
+            ...prev,
+            accounts: prev.accounts.filter(a => a.id !== id),
+            expenses: prev.expenses.map(e => e.accountId === id ? { ...e, accountId: undefined, accountName: undefined } : e)
+        }));
+
+        try {
+            await fetch(`/api/accounts/${id}`, { method: 'DELETE' });
+        } catch (error) {
+            console.error("Failed to delete account", error);
         }
     };
 
@@ -409,6 +450,8 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             deleteExpense,
             addPoints,
             addAccount,
+            updateAccount,
+            deleteAccount,
             addEvent,
 
             updateEvent,
