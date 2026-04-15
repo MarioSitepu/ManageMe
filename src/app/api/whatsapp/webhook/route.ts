@@ -1,6 +1,8 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/db';
 import { syncEventToGoogle, getUpcomingFromGoogle } from '@/lib/googleCalendar';
+import { detectExpenseFromImage } from '@/lib/gemini';
+import { getLocalToday } from '@/lib/dateUtils';
 
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
@@ -211,7 +213,7 @@ const tools = [
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { message, sender } = body;
+        const { message, sender, url, type } = body;
 
         const text = message?.trim() || '';
         const phone = sender || '';
@@ -241,6 +243,35 @@ export async function POST(request: Request) {
             const unregisteredMsg = `❌ *Nomor Belum Terdaftar*\n\nNomor WhatsApp ini belum terhubung ke akun TrackMe mana pun.\n\nSilakan login ke Web TrackMe (Google Login) lalu masukkan nomor Anda di menu *Profile* agar bot ini bisa mencatat ke akun Anda.`;
             await sendWhatsAppReply(phone, unregisteredMsg);
             return NextResponse.json({ success: true, response: 'Unregistered user' });
+        }
+
+        // --- IMAGE HANDLING ---
+        if (type === 'image' && url) {
+            await sendWhatsAppReply(phone, '🔎 *Menganalisis gambar...* Mohon tunggu.');
+            try {
+                const imgRes = await fetch(url);
+                const buffer = await imgRes.arrayBuffer();
+                const base64 = Buffer.from(buffer).toString('base64');
+                const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
+                
+                const detected = await detectExpenseFromImage(base64, contentType);
+                
+                const response = await handleAddExpense(
+                    detected.amount,
+                    detected.category.toLowerCase(),
+                    detected.description,
+                    undefined,
+                    user.id,
+                    'expense'
+                );
+                
+                await sendWhatsAppReply(phone, response);
+                return NextResponse.json({ success: true, response: 'Image analyzed and saved' });
+            } catch (err) {
+                console.error('WhatsApp image analysis error:', err);
+                await sendWhatsAppReply(phone, '❌ Gagal menganalisis gambar. Pastikan gambar transaksi jelas.');
+                return NextResponse.json({ success: true, response: 'Image analysis failed' });
+            }
         }
 
         const response = await processMessage(text, user.id);

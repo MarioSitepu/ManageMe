@@ -25,6 +25,95 @@ export default function FinancePage() {
     const [accountForm, setAccountForm] = useState({ name: '', type: 'BANK', balance: '', color: '#3b82f6' });
     const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
     const [editAccountForm, setEditAccountForm] = useState({ name: '', balance: '' });
+    const [isDetecting, setIsDetecting] = useState(false);
+    const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+    const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        autoProcessImage(file);
+    };
+
+    const autoProcessImage = async (file: File) => {
+        setIsDetecting(true);
+        try {
+            const reader = new FileReader();
+            reader.onloadend = async () => {
+                const base64 = reader.result as string;
+                const res = await fetch('/api/expenses/detect', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ image: base64 })
+                });
+
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.amount && data.description) {
+                        // AUTO SAVE
+                        await addExpense(
+                            parseFloat(data.amount),
+                            data.category || 'Other',
+                            data.description,
+                            '', // accountId
+                            'expense'
+                        );
+                        // Success toast equivalent
+                        alert(`✨ Auto-Saved: ${data.description} (Rp ${parseFloat(data.amount).toLocaleString('id-ID')})`);
+                    } else {
+                        // Partial data, pre-fill and show form
+                        setExpenseForm(prev => ({
+                            ...prev,
+                            amount: data.amount?.toString() || prev.amount,
+                            description: data.description || prev.description,
+                            category: data.category || prev.category
+                        }));
+                        setShowAddExpense(true);
+                    }
+                } else {
+                    const err = await res.json();
+                    alert(err.error || 'Gagal mendeteksi gambar. Coba lagi atau isi manual.');
+                }
+                setIsDetecting(false);
+                if (fileInputRef.current) fileInputRef.current.value = '';
+            };
+            reader.readAsDataURL(file);
+        } catch (error) {
+            console.error('Detection error:', error);
+            setIsDetecting(false);
+            alert('Terjadi kesalahan saat mendeteksi.');
+        }
+    };
+
+    // Global Listeners for Paste/Drop
+    React.useEffect(() => {
+        const onPaste = (e: ClipboardEvent) => {
+            const item = e.clipboardData?.items[0];
+            if (item?.type.startsWith('image/')) {
+                const file = item.getAsFile();
+                if (file) autoProcessImage(file);
+            }
+        };
+
+        const onDrop = (e: DragEvent) => {
+            e.preventDefault();
+            const file = e.dataTransfer?.files?.[0];
+            if (file?.type.startsWith('image/')) {
+                autoProcessImage(file);
+            }
+        };
+
+        const onDragOver = (e: DragEvent) => e.preventDefault();
+
+        window.addEventListener('paste', onPaste);
+        window.addEventListener('drop', onDrop);
+        window.addEventListener('dragover', onDragOver);
+
+        return () => {
+            window.removeEventListener('paste', onPaste);
+            window.removeEventListener('drop', onDrop);
+            window.removeEventListener('dragover', onDragOver);
+        };
+    }, []);
 
     const accounts = state.accounts || [];
     const totalBalance = accounts.reduce((s, a) => s + a.balance, 0);
@@ -143,6 +232,24 @@ export default function FinancePage() {
             {/* Add Forms */}
             {showAddExpense && (
                 <Card title="New Expense" style={{ marginBottom: '16px', borderColor: 'rgba(239,68,68,0.2)' }}>
+                    <div style={{ marginBottom: '15px' }}>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            style={{ width: '100%', border: '1px dashed rgba(255,255,255,0.2)', height: '40px' }}
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={isDetecting}
+                        >
+                            {isDetecting ? '⌛ Analyzing Receipt...' : '📸 Scan Receipt / Screenshot'}
+                        </Button>
+                        <input
+                            type="file"
+                            ref={fileInputRef}
+                            style={{ display: 'none' }}
+                            accept="image/*"
+                            onChange={handleFileChange}
+                        />
+                    </div>
                     <form onSubmit={handleAddExpense} style={{ display: 'flex', flexDirection: 'column', gap: '10px' }}>
                         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: '10px', marginBottom: '10px' }}>
                             <select value={expenseForm.type} onChange={e => setExpenseForm({ ...expenseForm, type: e.target.value })}>
