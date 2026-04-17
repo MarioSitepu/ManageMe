@@ -9,6 +9,7 @@ interface CardProps {
     id?: string;
     accent?: 'purple' | 'blue' | 'green' | 'red' | 'orange';
     action?: React.ReactNode;
+    onClick?: () => void;
 }
 
 export const Card: React.FC<CardProps> = ({
@@ -20,6 +21,7 @@ export const Card: React.FC<CardProps> = ({
     id,
     accent,
     action,
+    onClick,
 }) => {
     const accentColors: Record<string, string> = {
         purple: 'var(--accent)',
@@ -33,6 +35,7 @@ export const Card: React.FC<CardProps> = ({
         <div
             className={`glass-panel ${className}`}
             id={id}
+            onClick={onClick}
             style={{
                 padding: '20px',
                 borderLeft: accent ? `3px solid ${accentColors[accent]}` : undefined,

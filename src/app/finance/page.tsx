@@ -1,5 +1,6 @@
 "use client";
 import React, { useState } from 'react';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useGlobal } from '@/lib/GlobalContext';
@@ -15,7 +16,7 @@ const CATEGORY_COLORS: Record<string, string> = {
 };
 
 export default function FinancePage() {
-    const { state, addAccount, updateAccount, deleteAccount, addExpense, deleteExpense, updateDailyBudget } = useGlobal();
+    const { state, addAccount, updateAccount, deleteAccount, addExpense, deleteExpense, updateDailyBudget, showToast } = useGlobal();
     const [tab, setTab] = useState<Tab>('overview');
     const [showAddExpense, setShowAddExpense] = useState(false);
     const [showAddAccount, setShowAddAccount] = useState(false);
@@ -26,6 +27,7 @@ export default function FinancePage() {
     const [editingAccountId, setEditingAccountId] = useState<string | null>(null);
     const [editAccountForm, setEditAccountForm] = useState({ name: '', balance: '' });
     const [isDetecting, setIsDetecting] = useState(false);
+    const [confirmDeleteAccount, setConfirmDeleteAccount] = useState<string | null>(null);
     const fileInputRef = React.useRef<HTMLInputElement>(null);
 
     const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -58,7 +60,7 @@ export default function FinancePage() {
                             'expense'
                         );
                         // Success toast equivalent
-                        alert(`✨ Auto-Saved: ${data.description} (Rp ${parseFloat(data.amount).toLocaleString('id-ID')})`);
+                        showToast(`✨ Auto-Saved: ${data.description}`, 'success');
                     } else {
                         // Partial data, pre-fill and show form
                         setExpenseForm(prev => ({
@@ -71,7 +73,7 @@ export default function FinancePage() {
                     }
                 } else {
                     const err = await res.json();
-                    alert(err.error || 'Gagal mendeteksi gambar. Coba lagi atau isi manual.');
+                    showToast(err.error || 'Gagal mendeteksi gambar.', 'error');
                 }
                 setIsDetecting(false);
                 if (fileInputRef.current) fileInputRef.current.value = '';
@@ -80,7 +82,7 @@ export default function FinancePage() {
         } catch (error) {
             console.error('Detection error:', error);
             setIsDetecting(false);
-            alert('Terjadi kesalahan saat mendeteksi.');
+            showToast('Terjadi kesalahan saat mendeteksi.', 'error');
         }
     };
 
@@ -388,7 +390,7 @@ export default function FinancePage() {
                                             {formatRupiah(acc.balance)}
                                         </p>
                                         <button onClick={() => { setEditingAccountId(acc.id); setEditAccountForm({ name: acc.name, balance: acc.balance.toString() }) }} style={{ background: 'none', border: 'none', color: 'var(--text-muted)', cursor: 'pointer', fontSize: '1.2rem', padding: '4px' }} title="Edit Account">✏️</button>
-                                        <button onClick={() => { if (window.confirm('Hapus akun ini? Transaksi yang menggunakan akun ini akan tetap ada namun tidak lagi terkait dengan akun ini.')) deleteAccount(acc.id) }} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1.2rem', padding: '4px', opacity: 0.8 }} title="Delete Account">🗑️</button>
+                                        <button onClick={() => setConfirmDeleteAccount(acc.id)} style={{ background: 'none', border: 'none', color: 'var(--danger)', cursor: 'pointer', fontSize: '1.2rem', padding: '4px', opacity: 0.8 }} title="Delete Account">🗑️</button>
                                     </div>
                                 </div>
                             )}
@@ -396,6 +398,20 @@ export default function FinancePage() {
                     ))}
                 </div>
             )}
+
+            <ConfirmModal 
+                isOpen={!!confirmDeleteAccount}
+                title="Delete Account?"
+                message="This will permanently remove this account. Transactions linked to it will remain but will no longer be associated with any account."
+                onConfirm={() => {
+                    if (confirmDeleteAccount) {
+                        deleteAccount(confirmDeleteAccount);
+                        showToast('Account deleted successfully', 'success');
+                    }
+                    setConfirmDeleteAccount(null);
+                }}
+                onCancel={() => setConfirmDeleteAccount(null)}
+            />
         </main>
     );
 }

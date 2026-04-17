@@ -1,26 +1,54 @@
-/**
- * @license
- * SPDX-License-Identifier: Apache-2.0
- */
 "use client";
 
-import { Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import { Shield, LineChart, TrendingUp } from 'lucide-react';
+import { Suspense, useState } from 'react';
+import { useSearchParams, useRouter } from 'next/navigation';
+import { Shield, LineChart, TrendingUp, Mail, Lock, Loader2, AlertCircle } from 'lucide-react';
+import Link from 'next/link';
 
 function LoginUI() {
     const searchParams = useSearchParams();
-    const error = searchParams.get('error');
+    const router = useRouter();
+    const errorParam = searchParams.get('error');
+    
+    const [formData, setFormData] = useState({ identifier: '', password: '' });
+    const [loading, setLoading] = useState(false);
+    const [localError, setLocalError] = useState<string | null>(null);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        setLoading(true);
+        setLocalError(null);
+
+        try {
+            const res = await fetch('/api/auth/login', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(formData)
+            });
+
+            const data = await res.json();
+
+            if (!res.ok) {
+                throw new Error(data.error || 'Login failed');
+            }
+
+            // Success
+            router.push('/');
+            router.refresh();
+        } catch (err: any) {
+            setLocalError(err.message);
+        } finally {
+            setLoading(false);
+        }
+    };
+
+    const displayError = localError || errorParam;
 
     return (
         <div className="min-h-screen bg-[#09090b] text-[#fafafa] font-sans selection:bg-emerald-500/30 flex flex-col items-center justify-center p-4 sm:p-6 md:p-8 relative overflow-hidden">
-            {/* Soft gradient background */}
-            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/20 via-[#09090b] to-[#09090b] -z-10" />
+            <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top,_var(--tw-gradient-stops))] from-emerald-900/10 via-[#09090b] to-[#09090b] -z-10" />
 
-            {/* Main Container */}
             <div className="w-full max-w-[768px] flex flex-col gap-8 sm:gap-10 z-10 animate-in fade-in duration-1000">
-
-                {/* Header Section */}
                 <header className="flex flex-col items-center text-center gap-4">
                     <div className="w-12 h-12 rounded-[12px] bg-gradient-to-b from-emerald-400 to-teal-600 flex items-center justify-center shadow-[0_10px_15px_-3px_rgba(16,185,129,0.2)]">
                         <TrendingUp className="w-6 h-6 text-[#09090b]" strokeWidth={2.5} />
@@ -35,25 +63,72 @@ function LoginUI() {
                     </div>
                 </header>
 
-                {/* Login Card */}
                 <main className="w-full max-w-[448px] mx-auto bg-[#18181b]/80 backdrop-blur-xl border border-[#27272a]/80 rounded-[16px] p-6 sm:p-8 shadow-[0_25px_50px_-12px_rgba(0,0,0,0.5)]">
                     <div className="text-center mb-6">
                         <h2 className="text-xl font-medium text-[#f4f4f5] mb-1">Welcome Back</h2>
-                        <p className="text-sm text-[#a1a1aa]">Sign in securely to your account</p>
+                        <p className="text-sm text-[#a1a1aa]">Sign in to your account</p>
                     </div>
 
-                    {error && (
+                    {displayError && (
                         <div className="w-full mb-6 p-4 bg-red-500/10 border border-red-500/20 rounded-[12px] flex items-start gap-3 text-left animate-in fade-in slide-in-from-top-2">
-                            <svg className="w-5 h-5 text-red-500 shrink-0 mt-0.5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />
-                            </svg>
-                            <p className="text-[0.95rem] text-red-300 font-medium">{error}</p>
+                            <AlertCircle className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                            <p className="text-[0.95rem] text-red-300 font-medium">{displayError}</p>
                         </div>
                     )}
 
+                    <form onSubmit={handleSubmit} className="space-y-4 mb-6">
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-[#a1a1aa] ml-1">Username or Email</label>
+                            <div className="relative group">
+                                <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#52525b] group-focus-within:text-emerald-400 transition-colors z-10 pointer-events-none" />
+                                <input
+                                    type="text"
+                                    placeholder="johndoe or name@example.com"
+                                    required
+                                    className="w-full bg-[#09090b] border border-[#27272a] rounded-[8px] py-2.5 !pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all font-sans"
+                                    value={formData.identifier}
+                                    onChange={(e) => setFormData({ ...formData, identifier: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <div className="space-y-2">
+                            <label className="text-xs font-medium text-[#a1a1aa] ml-1">Password</label>
+                            <div className="relative group">
+                                <Lock className="absolute left-3.5 top-1/2 -translate-y-1/2 w-4 h-4 text-[#52525b] group-focus-within:text-emerald-400 transition-colors z-10 pointer-events-none" />
+                                <input
+                                    type="password"
+                                    placeholder="••••••••"
+                                    required
+                                    className="w-full bg-[#09090b] border border-[#27272a] rounded-[8px] py-2.5 !pl-12 pr-4 text-sm focus:outline-none focus:ring-2 focus:ring-emerald-500/50 focus:border-emerald-500 transition-all"
+                                    value={formData.password}
+                                    onChange={(e) => setFormData({ ...formData, password: e.target.value })}
+                                />
+                            </div>
+                        </div>
+
+                        <button
+                            type="submit"
+                            disabled={loading}
+                            className="w-full bg-emerald-500 hover:bg-emerald-600 disabled:bg-emerald-800 disabled:cursor-not-allowed text-[#09090b] py-2.5 rounded-[8px] font-semibold text-sm transition-all flex items-center justify-center gap-2"
+                        >
+                            {loading && <Loader2 className="w-4 h-4 animate-spin" />}
+                            Sign In
+                        </button>
+                    </form>
+
+                    <div className="relative mb-6">
+                        <div className="absolute inset-0 flex items-center">
+                            <div className="w-full border-t border-[#27272a]"></div>
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-[#18181b] px-2 text-[#52525b]">Or continue with</span>
+                        </div>
+                    </div>
+
                     <a
                         href="/api/google/auth"
-                        className="w-full flex items-center justify-center gap-3 bg-white hover:bg-[#f4f4f5] text-[#18181b] px-4 py-3 rounded-[8px] font-medium transition-all focus:outline-none focus:ring-2 focus:ring-emerald-500 focus:ring-offset-2 focus:ring-offset-[#18181b] active:scale-[0.98]"
+                        className="w-full flex items-center justify-center gap-3 bg-white hover:bg-[#f4f4f5] text-[#18181b] px-4 py-3 rounded-[8px] font-medium transition-all active:scale-[0.98]"
                         style={{ textDecoration: 'none' }}
                     >
                         <svg className="w-5 h-5 shrink-0" viewBox="0 0 24 24">
@@ -62,49 +137,14 @@ function LoginUI() {
                             <path fill="#FBBC05" d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l2.85-2.22.81-.62z" />
                             <path fill="#EA4335" d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" />
                         </svg>
-                        Continue with Google
+                        Google
                     </a>
 
-                    <div className="mt-6 pt-6 border-t border-[#27272a]/50">
-                        <p className="text-center text-xs text-[#a1a1aa] leading-relaxed m-0 p-0">
-                            By continuing, you agree to TrackMe's <br className="hidden sm:block" />
-                            <a href="#" className="text-[#a1a1aa] hover:text-emerald-400 underline underline-offset-2 decoration-[#3f3f46] transition-colors focus:outline-none focus:text-emerald-400" style={{ display: 'inline' }}>Terms of Service</a> and <a href="#" className="text-[#a1a1aa] hover:text-emerald-400 underline underline-offset-2 decoration-[#3f3f46] transition-colors focus:outline-none focus:text-emerald-400" style={{ display: 'inline' }}>Privacy Policy</a>.
-                        </p>
-                    </div>
                 </main>
 
-                {/* Features Section */}
-                <section className="grid grid-cols-1 sm:grid-cols-2 gap-3 sm:gap-4 w-full">
-                    <div className="bg-[#18181b]/40 border border-[#27272a]/80 rounded-[12px] p-4 sm:p-5 flex gap-4 hover:bg-[#18181b]/60 transition-colors group">
-                        <div className="w-10 h-10 rounded-[8px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
-                            <LineChart className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div className="m-0 p-0 text-left">
-                            <h3 className="text-sm font-medium text-[#f4f4f5] mb-1 m-0">Smart Analytics</h3>
-                            <p className="text-xs text-[#a1a1aa] leading-relaxed m-0">Deep insights into your financial flow with visual reports.</p>
-                        </div>
-                    </div>
-
-                    <div className="bg-[#18181b]/40 border border-[#27272a]/80 rounded-[12px] p-4 sm:p-5 flex gap-4 hover:bg-[#18181b]/60 transition-colors group">
-                        <div className="w-10 h-10 rounded-[8px] bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center shrink-0 group-hover:bg-emerald-500/20 transition-colors">
-                            <Shield className="w-5 h-5 text-emerald-400" />
-                        </div>
-                        <div className="m-0 p-0 text-left">
-                            <h3 className="text-sm font-medium text-[#f4f4f5] mb-1 m-0">Secure Vault</h3>
-                            <p className="text-xs text-[#a1a1aa] leading-relaxed m-0">Enterprise-grade protection for your private data.</p>
-                        </div>
-                    </div>
-                </section>
-
-                {/* Footer */}
                 <footer className="w-full flex flex-col sm:flex-row items-center justify-between gap-4 text-xs text-[#a1a1aa] pt-4 border-t border-[#27272a]/50 m-0">
                     <p className="m-0">© 2026 TrackMe. All rights reserved.</p>
-                    <div className="flex gap-6">
-                        <a href="#" className="hover:text-[#d4d4d8] transition-colors focus:outline-none focus:underline" style={{ textDecoration: 'none' }}>Privacy Policy</a>
-                        <a href="#" className="hover:text-[#d4d4d8] transition-colors focus:outline-none focus:underline" style={{ textDecoration: 'none' }}>Terms of Service</a>
-                    </div>
                 </footer>
-
             </div>
         </div>
     );

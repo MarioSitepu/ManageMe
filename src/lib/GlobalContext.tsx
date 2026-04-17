@@ -1,6 +1,7 @@
 "use client";
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { initialUser, UserState, EventType, CalendarEvent, Habit, Account } from './store';
+import { Toast } from '@/components/ui/Toast';
 
 interface GlobalContextType {
     state: UserState;
@@ -28,6 +29,7 @@ interface GlobalContextType {
     deleteHabit: (id: string) => Promise<void>;
 
     updateDailyBudget: (budget: number) => void;
+    showToast: (message: string, type?: 'success' | 'error' | 'warning' | 'info') => void;
     loading: boolean;
 }
 
@@ -36,6 +38,11 @@ const GlobalContext = createContext<GlobalContextType | undefined>(undefined);
 export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const [state, setState] = useState<UserState>(initialUser);
     const [loading, setLoading] = useState(true);
+    const [toast, setToast] = useState<{ message: string, type: 'success' | 'error' | 'warning' | 'info' } | null>(null);
+
+    const showToast = (message: string, type: 'success' | 'error' | 'warning' | 'info' = 'info') => {
+        setToast({ message, type });
+    };
 
     // Initial Load
     useEffect(() => {
@@ -467,9 +474,17 @@ export const GlobalProvider: React.FC<{ children: React.ReactNode }> = ({ childr
             toggleHabit,
             deleteHabit,
             updateDailyBudget,
+            showToast,
             loading
         }}>
             {children}
+            {toast && (
+                <Toast 
+                    message={toast.message} 
+                    type={toast.type} 
+                    onClose={() => setToast(null)} 
+                />
+            )}
         </GlobalContext.Provider>
     );
 };

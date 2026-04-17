@@ -2,6 +2,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
+import { motion } from 'framer-motion';
 
 const navItems = [
     {
@@ -57,54 +58,47 @@ export const Navbar: React.FC = () => {
     }
 
     return (
-        <nav style={{
-            position: 'fixed',
-            bottom: 0,
-            left: 0,
-            right: 0,
-            background: 'rgba(10, 10, 15, 0.92)',
-            backdropFilter: 'blur(20px)',
-            WebkitBackdropFilter: 'blur(20px)',
-            borderTop: '1px solid rgba(255, 255, 255, 0.06)',
-            paddingBottom: 'env(safe-area-inset-bottom)',
-            zIndex: 100,
-        }}>
-            <div style={{
-                display: 'flex',
-                justifyContent: 'space-around',
-                alignItems: 'center',
-                padding: '8px 0',
-                maxWidth: '500px',
-                margin: '0 auto',
-            }}>
+        <nav className="fixed bottom-0 left-0 right-0 z-100 py-2 bg-[#0a0a0f]/80 backdrop-blur-2xl border-t border-white/5 pb-[env(safe-area-inset-bottom)]">
+            <div className="flex justify-around items-center max-w-md mx-auto relative">
                 {navItems.map((item) => {
-                    const isActive = pathname === item.href;
+                    const isActive = pathname === item.href || (item.href !== '/' && pathname.startsWith(item.href));
                     return (
                         <Link
                             key={item.href}
                             href={item.href}
-                            style={{
-                                display: 'flex',
-                                flexDirection: 'column',
-                                alignItems: 'center',
-                                gap: '4px',
-                                textDecoration: 'none',
-                                padding: '6px 16px',
-                                borderRadius: '12px',
-                                transition: 'all 0.2s',
-                                color: isActive ? 'var(--accent)' : 'var(--text-muted)',
-                                background: isActive ? 'rgba(124, 58, 237, 0.1)' : 'transparent',
-                                minWidth: '56px',
-                            }}
+                            className={`relative flex flex-col items-center gap-1 px-4 py-2 text-center transition-colors ${
+                                isActive ? 'text-accent' : 'text-text-muted hover:text-text-secondary'
+                            }`}
                         >
-                            {item.icon(isActive)}
-                            <span style={{
-                                fontSize: '0.65rem',
-                                fontWeight: isActive ? 600 : 400,
-                                letterSpacing: '0.02em',
-                            }}>
+                            {isActive && (
+                                <motion.div
+                                    layoutId="nav-pill"
+                                    className="absolute inset-0 bg-accent-light rounded-xl -z-10"
+                                    transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
+                                />
+                            )}
+                            
+                            <motion.div
+                                animate={{ scale: isActive ? 1.15 : 1 }}
+                                transition={{ type: 'spring', stiffness: 300, damping: 20 }}
+                                className="relative z-10"
+                            >
+                                {item.icon(isActive)}
+                            </motion.div>
+                            
+                            <span className={`text-[10px] font-bold tracking-tight transition-all relative z-10 ${
+                                isActive ? 'opacity-100 scale-100' : 'opacity-60 scale-95'
+                            }`}>
                                 {item.label}
                             </span>
+
+                            {isActive && (
+                                <motion.div 
+                                    layoutId="nav-dot"
+                                    className="absolute -bottom-1.5 w-1 h-1 bg-accent rounded-full shadow-[0_0_8px_var(--accent)]"
+                                    transition={{ type: 'spring', bounce: 0.25, duration: 0.5 }}
+                                />
+                            )}
                         </Link>
                     );
                 })}

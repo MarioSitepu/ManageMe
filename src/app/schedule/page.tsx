@@ -1,6 +1,7 @@
 "use client";
 import React, { useState, useEffect } from 'react';
 import { EventTypeSelector } from '@/components/ui/EventTypeSelector';
+import { ConfirmModal } from '@/components/ui/ConfirmModal';
 import { useGlobal } from '@/lib/GlobalContext';
 import { EventType, CalendarEvent } from '@/lib/store';
 import { MonthlyCalendar } from '@/components/calendar/MonthlyCalendar';
@@ -9,7 +10,7 @@ import { WeeklyCalendar } from '@/components/calendar/WeeklyCalendar';
 type ViewType = 'monthly' | 'weekly' | 'list';
 
 export default function SchedulePage() {
-    const { state, addEvent, updateEvent, deleteEvent } = useGlobal();
+    const { state, addEvent, updateEvent, deleteEvent, showToast } = useGlobal();
     const [view, setView] = useState<ViewType>('monthly');
     const [currentDate, setCurrentDate] = useState(new Date());
     const [showForm, setShowForm] = useState(false);
@@ -18,6 +19,7 @@ export default function SchedulePage() {
     const [gcalConnected, setGcalConnected] = useState(false);
     const [gcalLoading, setGcalLoading] = useState(true);
     const [syncing, setSyncing] = useState(false);
+    const [confirmDeleteId, setConfirmDeleteId] = useState<string | null>(null);
 
     const [formData, setFormData] = useState({
         title: '', type: 'class' as EventType, day: 'Monday',
@@ -56,7 +58,10 @@ export default function SchedulePage() {
     };
 
     const handleDeleteClick = async (id: string) => {
-        if (!confirm('Delete this event?')) return;
+        setConfirmDeleteId(id);
+    };
+
+    const performDelete = async (id: string) => {
         if (id.startsWith('gcal_')) {
             await fetch(`/api/google/events/${id.replace('gcal_', '')}`, { method: 'DELETE' });
             setGcalEvents(prev => prev.filter(e => e.id !== id));
@@ -96,9 +101,11 @@ export default function SchedulePage() {
             const evRes = await fetch('/api/google/events?days=60');
             const evData = await evRes.json();
             if (evData.connected) setGcalEvents(evData.events || []);
-            alert(`✅ ${data.created} event diimport!`);
-            window.location.reload(); // Force GlobalContext to refetch DB state
-        } catch { alert('❌ Gagal sync'); } finally { setSyncing(false); }
+            showToast(`✅ ${data.created} events imported!`, 'success');
+            // Instead of reload, we can trust the state or just update what's needed
+            // but for simplicity and to match original logic:
+            setTimeout(() => window.location.reload(), 1000); 
+        } catch { showToast('❌ Sync failed', 'error'); } finally { setSyncing(false); }
     };
 
     const changeMonth = (delta: number) => {
@@ -271,6 +278,20 @@ export default function SchedulePage() {
             {!showForm && (
                 <button className="fab" onClick={() => { resetForm(); setShowForm(true); }} title="Add Event">+</button>
             )}
+
+            <ConfirmModal 
+                isOpen={!!confirmDeleteId}
+                title="Delete Event?"
+                message="Are you sure you want to delete this event? This action cannot be undone."
+                onConfirm={async () => {
+                    if (confirmDeleteId) {
+                        await performDelete(confirmDeleteId);
+                        showToast('Event deleted', 'info');
+                    }
+                    setConfirmDeleteId(null);
+                }}
+                onCancel={() => setConfirmDeleteId(null)}
+            />
         </main>
     );
 }

@@ -7,7 +7,6 @@ import { getLocalToday } from '@/lib/dateUtils';
 const GROQ_API_KEY = process.env.GROQ_API_KEY || '';
 const GROQ_MODEL = 'llama-3.3-70b-versatile';
 
-import { getLocalToday } from '@/lib/dateUtils';
 
 // Tool definitions for Groq (OpenAI-compatible format)
 const tools = [

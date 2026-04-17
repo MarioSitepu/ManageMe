@@ -4,14 +4,25 @@ import { Card } from '@/components/ui/Card';
 import { Button } from '@/components/ui/Button';
 import { useGlobal } from '@/lib/GlobalContext';
 import { getNextEvent, getEventIcon, getEventColor } from '@/lib/eventHelpers';
+import { Clock, MapPin, CheckCircle, Info, Calendar } from 'lucide-react';
 
 export const DayTimeline: React.FC = () => {
-    const { state, checkIn } = useGlobal();
+    const { state, checkIn, showToast } = useGlobal();
     const [showModal, setShowModal] = useState(false);
 
     const nextEvent = getNextEvent(state.events);
 
-    if (!nextEvent) return <Card>No upcoming events</Card>;
+    if (!nextEvent) {
+        return (
+            <Card className="flex flex-col items-center py-8 text-center bg-surface-2 border-dashed">
+                <Calendar size={32} className="text-text-muted mb-3 opacity-50" />
+                <p className="text-sm text-text-muted">No upcoming events scheduled for today.</p>
+                <Button size="sm" variant="ghost" className="mt-4" onClick={() => window.location.href='/schedule'}>
+                    Add Schedule
+                </Button>
+            </Card>
+        );
+    }
 
     const eventIcon = getEventIcon(nextEvent.type);
     const eventColor = getEventColor(nextEvent.type);
@@ -20,114 +31,136 @@ export const DayTimeline: React.FC = () => {
         checkIn(onTime);
         setShowModal(false);
 
-        // Show feedback animation
-        const pointsChange = onTime ? '+10' : '-20';
-        alert(`${onTime ? '✅ Great!' : '❌ Late!'} Points: ${pointsChange} `);
+        if (onTime) {
+            showToast('✅ Awesome! You earned +10 discipline points.', 'success');
+        } else {
+            showToast('❌ Late check-in. -20 points. Try harder next time!', 'error');
+        }
     };
 
     return (
-        <>
-            <Card title="Next Up">
-                <div style={{ marginBottom: '20px' }}>
-                    <div style={{ display: 'flex', gap: '10px', alignItems: 'center', marginBottom: '10px' }}>
-                        <span style={{ fontSize: '2rem' }}>{eventIcon}</span>
-                        <div>
-                            <h3 style={{ fontSize: '1.5rem', marginBottom: '5px' }}>{nextEvent.title}</h3>
-                            <p style={{ fontSize: '0.85rem', color: eventColor, textTransform: 'capitalize' }}>
-                                {nextEvent.type}
-                            </p>
+        <section className="space-y-4">
+            <div className="flex justify-between items-center px-1">
+                <h2 className="text-sm font-bold text-text-muted uppercase tracking-wider">Today's Timeline</h2>
+                <span className="badge badge-accent animate-pulse">Running Now</span>
+            </div>
+
+            <div className="timeline-container animate-fade-in">
+                {/* Active/Next Event */}
+                <div className="timeline-item">
+                    <div className="timeline-dot shadow-[0_0_8px_var(--accent)]" style={{ background: eventColor }} />
+                    <Card 
+                        className="p-5! hover:border-accent/40 transition-colors cursor-pointer group"
+                        onClick={() => setShowModal(true)}
+                    >
+                        <div className="flex gap-4">
+                            <div className="flex-1 space-y-3">
+                                <div className="space-y-1">
+                                    <div className="flex items-center gap-2">
+                                        <span className="text-xl">{eventIcon}</span>
+                                        <span className="text-xs font-bold uppercase tracking-widest" style={{ color: eventColor }}>
+                                            {nextEvent.type}
+                                        </span>
+                                    </div>
+                                    <h3 className="text-lg font-bold group-hover:text-accent transition-colors">
+                                        {nextEvent.title}
+                                    </h3>
+                                </div>
+
+                                <div className="flex flex-wrap gap-y-2 gap-x-4 text-xs font-medium text-text-secondary">
+                                    <div className="flex items-center gap-1.5">
+                                        <Clock size={14} className="text-accent" />
+                                        <span>{nextEvent.startTime} {nextEvent.endTime && `— ${nextEvent.endTime}`}</span>
+                                    </div>
+                                    {nextEvent.location && (
+                                        <div className="flex items-center gap-1.5">
+                                            <MapPin size={14} className="text-danger" />
+                                            <span>{nextEvent.location}</span>
+                                        </div>
+                                    )}
+                                </div>
+
+                                <div className="p-3 bg-surface-2/50 rounded-xl border border-border/50 flex items-start gap-3">
+                                    <Info size={14} className="mt-0.5 text-accent shrink-0" />
+                                    <div className="space-y-1">
+                                        <p className="text-[11px] font-semibold text-text uppercase tracking-tight">Prep Checklist</p>
+                                        <div className="flex flex-wrap gap-2">
+                                            {['Laptop Charged', 'Notebook'].map(item => (
+                                                <span key={item} className="flex items-center gap-1 text-[10px] bg-bg px-2 py-0.5 rounded-full text-text-muted border border-border">
+                                                    <CheckCircle size={10} className="text-success" />
+                                                    {item}
+                                                </span>
+                                            ))}
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
                         </div>
+
+                        <Button 
+                            className="w-full mt-4 rounded-xl! group-hover:bg-accent-hover"
+                            onClick={(e) => { e.stopPropagation(); setShowModal(true); }}
+                        >
+                            <CheckCircle size={18} /> Check In
+                        </Button>
+                    </Card>
+                </div>
+
+                {/* Placeholder for later events */}
+                <div className="timeline-item opacity-40 grayscale">
+                    <div className="timeline-dot" style={{ background: 'var(--text-muted)', border: 'none' }} />
+                    <div className="pl-2">
+                        <p className="text-[10px] font-bold text-text-muted uppercase italic mt-1">Next events after this...</p>
                     </div>
-                    <p style={{ color: 'var(--text-secondary)' }}>
-                        Starts at <span style={{ color: 'white' }}>{nextEvent.startTime}</span>
-                        {nextEvent.endTime && <span> - {nextEvent.endTime}</span>}
-                        {' '}(Prep: {nextEvent.prepTimeMinutes}m)
-                    </p>
-                    {nextEvent.location && (
-                        <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)', marginTop: '5px' }}>
-                            📍 {nextEvent.location}
-                        </p>
-                    )}
                 </div>
+            </div>
 
-                <div style={{ background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '8px', marginBottom: '20px' }}>
-                    <p style={{ fontSize: '0.9rem', color: 'var(--text-secondary)' }}>Preparation Checklist:</p>
-                    <ul style={{ paddingLeft: '20px', marginTop: '5px' }}>
-                        <li>Laptop Charged</li>
-                        <li>Notebook</li>
-                    </ul>
-                </div>
-
-                <Button onClick={() => setShowModal(true)} style={{ width: '100%' }}>
-                    Check In
-                </Button>
-            </Card>
-
-            {/* Check-In Modal */}
+            {/* Check-In Modal Implementation remains but we'll use ConfirmModal logic or keep this unique one */}
             {showModal && (
-                <div style={{
-                    position: 'fixed',
-                    top: 0,
-                    left: 0,
-                    right: 0,
-                    bottom: 0,
-                    background: 'rgba(0,0,0,0.8)',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    zIndex: 1000,
-                    animation: 'fadeIn 0.2s ease'
-                }}>
-                    <div className="glass-panel" style={{
-                        padding: '30px',
-                        maxWidth: '400px',
-                        width: '90%',
-                        textAlign: 'center',
-                        animation: 'slideUp 0.3s ease'
-                    }}>
-                        <h2 style={{ fontSize: '1.8rem', marginBottom: '20px' }}>Were you on time?</h2>
+                <div className="fixed inset-0 z-1000 flex items-center justify-center p-4 bg-black/70 backdrop-blur-md animate-fade-in">
+                    <div className="w-full max-w-sm glass-card p-8 rounded-3xl animate-slide-in-up shadow-2xl space-y-6">
+                        <div className="text-center space-y-2">
+                            <div className="inline-flex p-3 rounded-full bg-accent-light text-accent mb-2">
+                                <Clock size={32} />
+                            </div>
+                            <h2 className="text-2xl font-black tracking-tight text-text">Attendance</h2>
+                            <p className="text-sm text-text-secondary">Are you present and on-time for <span className="text-text font-bold">"{nextEvent.title}"</span>?</p>
+                        </div>
 
-                        <div style={{ display: 'flex', gap: '15px', marginBottom: '20px' }}>
-                            <Button
+                        <div className="grid grid-cols-2 gap-4">
+                            <button
                                 onClick={() => handleCheckIn(true)}
-                                style={{
-                                    flex: 1,
-                                    background: 'var(--success)',
-                                    padding: '20px'
-                                }}
+                                className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-success-light border border-success/30 hover:bg-success/20 transition-all group"
                             >
-                                <div>
-                                    <div style={{ fontSize: '2rem', marginBottom: '5px' }}>✅</div>
-                                    <div>Yes, On Time</div>
-                                    <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>+10 points</div>
+                                <div className="text-3xl bg-success/20 p-2 rounded-xl group-hover:scale-110 transition-transform">✅</div>
+                                <div className="text-center">
+                                    <div className="text-xs font-black text-success uppercase">On-Time</div>
+                                    <div className="text-[10px] text-success/80">+10 Points</div>
                                 </div>
-                            </Button>
+                            </button>
 
-                            <Button
+                            <button
                                 onClick={() => handleCheckIn(false)}
-                                style={{
-                                    flex: 1,
-                                    background: 'var(--danger)',
-                                    padding: '20px'
-                                }}
+                                className="flex flex-col items-center gap-3 p-5 rounded-2xl bg-danger-light border border-danger/30 hover:bg-danger/20 transition-all group"
                             >
-                                <div>
-                                    <div style={{ fontSize: '2rem', marginBottom: '5px' }}>❌</div>
-                                    <div>No, Late</div>
-                                    <div style={{ fontSize: '0.85rem', opacity: 0.8 }}>-20 points</div>
+                                <div className="text-3xl bg-danger/20 p-2 rounded-xl group-hover:scale-110 transition-transform">❌</div>
+                                <div className="text-center">
+                                    <div className="text-xs font-black text-danger uppercase">Late</div>
+                                    <div className="text-[10px] text-danger/80">-20 Points</div>
                                 </div>
-                            </Button>
+                            </button>
                         </div>
 
                         <Button
+                            variant="ghost"
                             onClick={() => setShowModal(false)}
-                            style={{ background: 'rgba(255,255,255,0.1)', width: '100%' }}
+                            className="w-full py-3! rounded-xl!"
                         >
-                            Cancel
+                            Not yet / Cancel
                         </Button>
                     </div>
                 </div>
             )}
-        </>
+        </section>
     );
 };

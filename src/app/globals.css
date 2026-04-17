@@ -148,7 +148,10 @@ select {
   font-family: inherit;
   font-size: 0.9375rem;
   width: 100%;
-  padding: 10px 14px;
+  padding-top: 10px;
+  padding-bottom: 10px;
+  padding-left: 14px;
+  padding-right: 14px;
   background: var(--surface-2);
   border: 1px solid var(--border);
   border-radius: var(--radius-sm);
@@ -156,6 +159,7 @@ select {
   outline: none;
   transition: border-color var(--transition), background var(--transition);
   -webkit-appearance: none;
+  appearance: none;
 }
 
 input:focus,
@@ -584,12 +588,42 @@ input[type="checkbox"] {
   }
 }
 
+@keyframes slideInRight {
+  from {
+    opacity: 0;
+    transform: translateX(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateX(0);
+  }
+}
+
+@keyframes slideInUp {
+  from {
+    opacity: 0;
+    transform: translateY(10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
 .animate-fade-in {
   animation: fadeIn 0.3s var(--transition) forwards;
 }
 
 .animate-slide-up {
   animation: slideUp 0.35s var(--transition) forwards;
+}
+
+.animate-slide-in-right {
+  animation: slideInRight 0.3s var(--transition) forwards;
+}
+
+.animate-slide-in-up {
+  animation: slideInUp 0.3s var(--transition) forwards;
 }
 
 /* Legacy animate-slide */
@@ -697,5 +731,42 @@ input[type="checkbox"] {
 
   .delay-500 {
     animation-delay: 500ms;
+  }
+
+  /* Glassmorphism Extra */
+  .glass-card {
+    background: rgba(17, 17, 24, 0.7);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+  }
+
+  /* Timeline Classes */
+  .timeline-container {
+    position: relative;
+    padding-left: 24px;
+    margin-left: 8px;
+    border-left: 2px solid var(--border);
+  }
+
+  .timeline-dot {
+    position: absolute;
+    left: -7px;
+    top: 4px;
+    width: 12px;
+    height: 12px;
+    border-radius: 50%;
+    background: var(--accent);
+    border: 3px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--border);
+  }
+
+  .timeline-item {
+    position: relative;
+    margin-bottom: 24px;
+  }
+
+  .timeline-item:last-child {
+    margin-bottom: 0;
   }
 }
