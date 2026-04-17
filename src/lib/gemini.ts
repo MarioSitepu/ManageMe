@@ -6,6 +6,7 @@ export interface DetectedExpense {
     amount: number;
     description: string;
     category: string;
+    account?: string; // New field: identified source of funds
 }
 
 /**
@@ -28,28 +29,27 @@ export async function detectExpenseFromImage(base64Image: string, mimeType: stri
     
     const prompt = `
         Analyze this screenshot or photo of a financial transaction or receipt.
-        Extract the total amount, a brief description, and categorize it.
+        Extract the total amount, a brief description, categorize it, and identify the payment source (Bank/E-wallet).
         
         Return the data in this JSON format:
         {
             "amount": number,
             "description": "string",
-            "category": "Food" | "Transport" | "Entertainment" | "Shopping" | "Bills" | "Other"
+            "category": "Food" | "Transport" | "Entertainment" | "Shopping" | "Bills" | "Other",
+            "account": "string" | null
         }
         
         Guidelines:
         - "amount": The total paid amount. Only numbers, no currency symbols.
         - "description": A concise name for the transaction (e.g., "Gojek", "Lunch at Warteg", "Electricity Bill").
         - "category": Match to one of the provided categories. 
-            - Use "Food" for restaurants, cafes, snacks.
-            - Use "Transport" for ride-hailing, fuel, parking.
-            - Use "Shopping" for retail, e-commerce (Shopee, Tokopedia).
-            - Use "Bills" for utilities, internet, subscriptions.
-            - If unclear, use "Other".
+        - "account": The identified source of funds (e.g., "BCA", "GoPay", "DANA", "OVO", "Mandiri", "SeaBank"). 
+          If you see a bank logo or name, extract it. If not clearly visible, return null.
         
         If the text is in Indonesian:
         - Totalkan jumlah pembayaran.
         - Deskripsi singkat dan jelas.
+        - Identifikasi sumber dana (Bank/E-Wallet/Cash).
         
         Return ONLY the raw JSON object.
     `;

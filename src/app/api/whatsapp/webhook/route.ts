@@ -255,16 +255,19 @@ export async function POST(request: Request) {
                 
                 const detected = await detectExpenseFromImage(base64, contentType);
                 
+                // Map detected account to name if exists
+                const accountName = detected.account || undefined;
+
                 const response = await handleAddExpense(
                     detected.amount,
                     detected.category.toLowerCase(),
                     detected.description,
-                    undefined,
+                    accountName,
                     user.id,
                     'expense'
                 );
                 
-                await sendWhatsAppReply(phone, response);
+                await sendWhatsAppReply(phone, `🤖 *AI Analysis Result:*\n` + response);
                 return NextResponse.json({ success: true, response: 'Image analyzed and saved' });
             } catch (err) {
                 console.error('WhatsApp image analysis error:', err);
