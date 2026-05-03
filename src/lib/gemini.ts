@@ -6,7 +6,8 @@ export interface DetectedExpense {
     amount: number;
     description: string;
     category: string;
-    account?: string; // New field: identified source of funds
+    account?: string;
+    isReceipt: boolean; // New field: true if it is a valid receipt or transaction proof
 }
 
 /**
@@ -18,7 +19,7 @@ export async function detectExpenseFromImage(base64Image: string, mimeType: stri
     }
 
     const model = genAI.getGenerativeModel({ 
-        model: "gemini-1.5-flash",
+        model: "gemini-flash-latest",
         generationConfig: {
             responseMimeType: "application/json",
         }
@@ -28,11 +29,11 @@ export async function detectExpenseFromImage(base64Image: string, mimeType: stri
     const base64Data = base64Image.includes(',') ? base64Image.split(',')[1] : base64Image;
     
     const prompt = `
-        Analyze this screenshot or photo of a financial transaction or receipt.
-        Extract the total amount, a brief description, categorize it, and identify the payment source (Bank/E-wallet).
+        Analyze this image. Determine if it is a screenshot or photo of a financial transaction, receipt, or proof of transfer.
         
         Return the data in this JSON format:
         {
+            "isReceipt": boolean,
             "amount": number,
             "description": "string",
             "category": "Food" | "Transport" | "Entertainment" | "Shopping" | "Bills" | "Other",
@@ -40,16 +41,16 @@ export async function detectExpenseFromImage(base64Image: string, mimeType: stri
         }
         
         Guidelines:
-        - "amount": The total paid amount. Only numbers, no currency symbols.
-        - "description": A concise name for the transaction (e.g., "Gojek", "Lunch at Warteg", "Electricity Bill").
+        - "isReceipt": Set to true ONLY if the image is clearly a receipt, invoice, bank transfer proof, or transaction history. Otherwise set to false.
+        - "amount": The total paid amount. Only numbers, no currency symbols. If isReceipt is false, set to 0.
+        - "description": A concise name for the transaction (e.g., "Gojek", "Lunch at Warteg"). If isReceipt is false, set to "N/A".
         - "category": Match to one of the provided categories. 
-        - "account": The identified source of funds (e.g., "BCA", "GoPay", "DANA", "OVO", "Mandiri", "SeaBank"). 
-          If you see a bank logo or name, extract it. If not clearly visible, return null.
+        - "account": The identified source of funds (e.g., "BCA", "GoPay", "DANA"). If not clearly visible, return null.
         
         If the text is in Indonesian:
+        - Tentukan apakah ini bukti transaksi/struk (isReceipt).
         - Totalkan jumlah pembayaran.
         - Deskripsi singkat dan jelas.
-        - Identifikasi sumber dana (Bank/E-Wallet/Cash).
         
         Return ONLY the raw JSON object.
     `;

@@ -255,6 +255,11 @@ export async function POST(request: Request) {
                 
                 const detected = await detectExpenseFromImage(base64, contentType);
                 
+                if (!detected.isReceipt) {
+                    await sendWhatsAppReply(phone, '❌ *Tidak kebaca*\n\nMaaf, gambar ini tidak terdeteksi sebagai bukti transaksi atau struk belanja.');
+                    return NextResponse.json({ success: true, response: 'Not a receipt' });
+                }
+
                 // Map detected account to name if exists
                 const accountName = detected.account || undefined;
 
@@ -267,7 +272,7 @@ export async function POST(request: Request) {
                     'expense'
                 );
                 
-                await sendWhatsAppReply(phone, `🤖 *AI Analysis Result:*\n` + response);
+                await sendWhatsAppReply(phone, `📄 *Receipt diterima*\n\n🤖 *AI Analysis:*\n` + response);
                 return NextResponse.json({ success: true, response: 'Image analyzed and saved' });
             } catch (err) {
                 console.error('WhatsApp image analysis error:', err);
