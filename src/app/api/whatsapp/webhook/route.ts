@@ -333,7 +333,11 @@ async function processMessage(text: string, userId: string): Promise<string> {
 // ==========================================
 // COMMAND PARSER (Always works, no API needed)
 // ==========================================
-async function processCommand(text: string, userId: string): Promise<string> {
+async function processCommand(text: string, userId: string, rawBody?: any): Promise<string> {
+    if (text === 'debug') {
+        return `🛠️ *Debug Info*\n\nPayload: \n\`\`\`json\n${JSON.stringify(rawBody, null, 2)}\n\`\`\``;
+    }
+
     if (['menu', 'help', '/start', 'bantuan'].includes(text)) {
         return getMenuMessage();
     }
