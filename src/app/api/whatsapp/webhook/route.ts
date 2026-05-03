@@ -212,16 +212,19 @@ const tools = [
 export async function POST(request: Request) {
     try {
         const body = await request.json();
-        const { message, sender, url, type } = body;
+        const { message, sender, url, file, type } = body;
+        const attachmentUrl = url || file;
 
         const text = message?.trim() || '';
         const phone = sender || '';
 
-        if (!phone || (!text && !url)) {
+        console.log('Incoming WhatsApp Payload:', JSON.stringify({ phone, text, type, hasUrl: !!url, hasFile: !!file }));
+
+        if (!phone || (!text && !attachmentUrl)) {
             return NextResponse.json({ success: true, response: 'Skipped: no content or phone' });
         }
 
-        console.log('Received WhatsApp message:', { text, phone });
+        console.log('Received WhatsApp message:', { text, phone, attachmentUrl });
 
         // Clean phone number (e.g. 62812... -> 812...)
         const cleanPhone = phone.replace(/\D/g, '');
@@ -246,10 +249,10 @@ export async function POST(request: Request) {
 
         // --- IMAGE HANDLING ---
         // Be more flexible: if there's a URL, try to analyze it as a receipt
-        if (url) {
+        if (attachmentUrl) {
             await sendWhatsAppReply(phone, '🔎 *Menganalisis gambar...* Mohon tunggu.');
             try {
-                const imgRes = await fetch(url);
+                const imgRes = await fetch(attachmentUrl);
                 const buffer = await imgRes.arrayBuffer();
                 const base64 = Buffer.from(buffer).toString('base64');
                 const contentType = imgRes.headers.get('content-type') || 'image/jpeg';
