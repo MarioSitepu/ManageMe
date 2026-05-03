@@ -18,13 +18,8 @@ export async function POST(request: Request) {
             );
         }
 
-        // 2. LOG ATTEMPT TO FILE (For diagnostics)
-        const fs = require('fs');
-        const path = require('path');
-        const logDir = path.join(process.cwd(), 'scratch');
-        if (!fs.existsSync(logDir)) fs.mkdirSync(logDir);
-        const logMessage = `[${new Date().toISOString()}] Login Attempt: ID="${identifier}" PW_LEN=${password?.length}\n`;
-        fs.appendFileSync(path.join(logDir, 'login_debug.log'), logMessage);
+        // 2. LOG ATTEMPT (Use console.log for serverless environments)
+        console.log(`[${new Date().toISOString()}] Login Attempt: ID="${identifier}" PW_LEN=${password?.length}`);
 
         // 3. FIND USER (Case-insensitive)
         console.log('Login attempt for identifier:', identifier);
