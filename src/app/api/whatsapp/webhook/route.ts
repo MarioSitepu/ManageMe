@@ -297,7 +297,7 @@ export async function POST(request: Request) {
             return NextResponse.json({ success: true, response: 'Image detected but URL missing' });
         }
 
-        const response = await processMessage(text, user.id);
+        const response = await processMessage(text, user.id, body);
 
         if (response) {
             await sendWhatsAppReply(phone, response);
@@ -317,7 +317,7 @@ export async function GET() {
 // ==========================================
 // HYBRID: AI + Command Fallback
 // ==========================================
-async function processMessage(text: string, userId: string): Promise<string> {
+async function processMessage(text: string, userId: string, rawBody?: any): Promise<string> {
     try {
         if (GROQ_API_KEY) {
             const aiResult = await processWithGroq(text, userId);
@@ -327,7 +327,7 @@ async function processMessage(text: string, userId: string): Promise<string> {
         console.log('AI unavailable, using command parser fallback:', error);
     }
 
-    return processCommand(text.toLowerCase(), userId);
+    return processCommand(text.toLowerCase(), userId, rawBody);
 }
 
 // ==========================================
