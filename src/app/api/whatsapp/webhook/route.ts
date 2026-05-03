@@ -245,7 +245,8 @@ export async function POST(request: Request) {
         }
 
         // --- IMAGE HANDLING ---
-        if (type === 'image' && url) {
+        // Be more flexible: if there's a URL, try to analyze it as a receipt
+        if (url) {
             await sendWhatsAppReply(phone, '🔎 *Menganalisis gambar...* Mohon tunggu.');
             try {
                 const imgRes = await fetch(url);
