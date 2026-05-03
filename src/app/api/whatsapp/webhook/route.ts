@@ -217,8 +217,8 @@ export async function POST(request: Request) {
         const text = message?.trim() || '';
         const phone = sender || '';
 
-        if (!text || !phone) {
-            return NextResponse.json({ success: true, response: 'Skipped: no text or phone' });
+        if (!phone || (!text && !url)) {
+            return NextResponse.json({ success: true, response: 'Skipped: no content or phone' });
         }
 
         console.log('Received WhatsApp message:', { text, phone });
