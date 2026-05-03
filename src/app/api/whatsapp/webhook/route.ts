@@ -211,7 +211,16 @@ const tools = [
 // Fonnte Webhook Handler
 export async function POST(request: Request) {
     try {
-        const body = await request.json();
+        let body: any = {};
+        const contentType = request.headers.get('content-type') || '';
+        
+        if (contentType.includes('application/json')) {
+            body = await request.json();
+        } else if (contentType.includes('application/x-www-form-urlencoded')) {
+            const formData = await request.formData();
+            body = Object.fromEntries(formData.entries());
+        }
+
         const { message, sender, url, file, type } = body;
         const attachmentUrl = url || file;
 
@@ -283,6 +292,9 @@ export async function POST(request: Request) {
                 await sendWhatsAppReply(phone, '❌ Gagal menganalisis gambar. Pastikan gambar transaksi jelas.');
                 return NextResponse.json({ success: true, response: 'Image analysis failed' });
             }
+        } else if (type === 'image' || type === 'file') {
+            await sendWhatsAppReply(phone, '⚠️ *Gambar Terdeteksi tapi Link Hilang*\n\nBot mendeteksi kamu mengirim gambar, tapi Fonnte tidak mengirimkan link gambarnya.\n\n*Solusi:*\n1. Pastikan fitur **"Webhook File"** di Dashboard Fonnte sudah ON.\n2. Pastikan paket Fonnte kamu bukan paket **Basic/Free** (fitur ini butuh paket Super/Advanced/Ultra).');
+            return NextResponse.json({ success: true, response: 'Image detected but URL missing' });
         }
 
         const response = await processMessage(text, user.id);
